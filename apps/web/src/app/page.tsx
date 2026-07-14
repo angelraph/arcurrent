@@ -1,5 +1,7 @@
 import { getObligations, getRecentDecisions, getTreasuryBalance } from "@/lib/data";
+import { formatUsdc } from "@/lib/format";
 import { ObligationForm } from "./obligation-form";
+import { DecisionPill, StatusPill } from "./status-pill";
 import { ARC_TESTNET } from "@arcurrent/shared";
 
 export const dynamic = "force-dynamic";
@@ -19,55 +21,95 @@ export default async function Home() {
   }
 
   return (
-    <div className="mx-auto flex w-full max-w-4xl flex-1 flex-col gap-8 px-6 py-12">
+    <div className="mx-auto flex w-full max-w-4xl flex-1 flex-col gap-10 px-6 py-12">
       <header className="flex items-baseline justify-between">
-        <h1 className="text-2xl font-semibold">Arcurrent</h1>
-        <span className="text-sm text-zinc-500">Arc Testnet — chain {ARC_TESTNET.chainId}</span>
+        <div className="flex items-center gap-2.5">
+          <span className="flex h-7 w-7 items-center justify-center rounded-md bg-accent text-sm font-bold text-accent-foreground">
+            A
+          </span>
+          <h1 className="text-xl font-semibold tracking-tight">Arcurrent</h1>
+        </div>
+        <span className="rounded-full border border-border px-2.5 py-1 text-xs font-medium text-muted">
+          Arc Testnet · chain {ARC_TESTNET.chainId}
+        </span>
       </header>
 
-      <section className="rounded-lg border border-zinc-200 p-4 dark:border-zinc-800">
-        <h2 className="text-sm font-medium text-zinc-500">Treasury balance</h2>
-        {balance === null ? (
-          <p className="mt-1 text-lg text-amber-600">
-            Not configured — run <code className="rounded bg-zinc-100 px-1 dark:bg-zinc-800">npm run setup:wallet</code> and set TREASURY_WALLET_ID.
-          </p>
-        ) : (
-          <p className="mt-1 text-2xl font-semibold">${balance.toFixed(2)} USDC</p>
-        )}
+      <section className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <div className="rounded-xl border border-border bg-surface p-5 shadow-sm">
+          <h2 className="text-xs font-semibold uppercase tracking-wide text-muted">
+            Escrow balance <span className="normal-case text-muted">(spendable)</span>
+          </h2>
+          {balance.escrowUsdc === null ? (
+            <p className="mt-2 text-sm text-warning">
+              Not configured — deploy <code className="rounded bg-warning-soft px-1.5 py-0.5 font-mono text-xs">ObligationEscrow</code> and set OBLIGATION_ESCROW_ADDRESS.
+            </p>
+          ) : (
+            <p className="mt-2 font-mono text-3xl font-semibold tracking-tight">
+              ${formatUsdc(balance.escrowUsdc)} <span className="text-lg font-medium text-muted">USDC</span>
+            </p>
+          )}
+        </div>
+        <div className="rounded-xl border border-border bg-surface p-5 shadow-sm">
+          <h2 className="text-xs font-semibold uppercase tracking-wide text-muted">
+            Treasury wallet <span className="normal-case text-muted">(undeposited)</span>
+          </h2>
+          {balance.walletUsdc === null ? (
+            <p className="mt-2 text-sm text-warning">
+              Not configured — run <code className="rounded bg-warning-soft px-1.5 py-0.5 font-mono text-xs">npm run setup:wallet</code> and set TREASURY_WALLET_ID.
+            </p>
+          ) : (
+            <p className="mt-2 font-mono text-3xl font-semibold tracking-tight text-muted">
+              ${formatUsdc(balance.walletUsdc)} <span className="text-lg font-medium text-muted">USDC</span>
+            </p>
+          )}
+        </div>
       </section>
 
       <section className="flex flex-col gap-3">
-        <h2 className="text-lg font-semibold">Add obligation</h2>
+        <h2 className="text-sm font-semibold uppercase tracking-wide text-muted">Add obligation</h2>
         <ObligationForm />
       </section>
 
       <section className="flex flex-col gap-3">
-        <h2 className="text-lg font-semibold">Obligations</h2>
+        <h2 className="text-sm font-semibold uppercase tracking-wide text-muted">Obligations</h2>
         {obligations.length === 0 ? (
-          <p className="text-sm text-zinc-500">None yet — add one above.</p>
+          <p className="rounded-xl border border-dashed border-border p-6 text-center text-sm text-muted">
+            None yet — add one above.
+          </p>
         ) : (
-          <div className="overflow-x-auto rounded-lg border border-zinc-200 dark:border-zinc-800">
+          <div className="overflow-x-auto rounded-xl border border-border bg-surface shadow-sm">
             <table className="w-full text-left text-sm">
-              <thead className="bg-zinc-50 dark:bg-zinc-900">
-                <tr>
-                  <th className="px-3 py-2">Vendor</th>
-                  <th className="px-3 py-2">Amount</th>
-                  <th className="px-3 py-2">Due</th>
-                  <th className="px-3 py-2">Status</th>
-                  <th className="px-3 py-2">Latest decision</th>
+              <thead>
+                <tr className="border-b border-border text-xs uppercase tracking-wide text-muted">
+                  <th className="px-4 py-3 font-medium">Vendor</th>
+                  <th className="px-4 py-3 font-medium">Amount</th>
+                  <th className="px-4 py-3 font-medium">Due</th>
+                  <th className="px-4 py-3 font-medium">Status</th>
+                  <th className="px-4 py-3 font-medium">Latest decision</th>
                 </tr>
               </thead>
               <tbody>
                 {obligations.map((o) => {
                   const latest = decisionsByObligation.get(o.id)?.[0];
                   return (
-                    <tr key={o.id} className="border-t border-zinc-200 dark:border-zinc-800">
-                      <td className="px-3 py-2">{o.vendorName}</td>
-                      <td className="px-3 py-2">{o.amount.toFixed(2)} {o.currency}</td>
-                      <td className="px-3 py-2">{o.dueDate}</td>
-                      <td className="px-3 py-2">{o.status}</td>
-                      <td className="max-w-xs px-3 py-2 text-zinc-600 dark:text-zinc-400" title={latest?.reasoning}>
-                        {latest ? `${latest.action} — ${latest.reasoning}` : "not yet evaluated"}
+                    <tr key={o.id} className="border-b border-border last:border-0">
+                      <td className="px-4 py-3 font-medium">{o.vendorName}</td>
+                      <td className="px-4 py-3 font-mono">
+                        {formatUsdc(o.amount)} <span className="text-muted">{o.currency}</span>
+                      </td>
+                      <td className="px-4 py-3 text-muted">{o.dueDate}</td>
+                      <td className="px-4 py-3">
+                        <StatusPill status={o.status} />
+                      </td>
+                      <td className="max-w-xs px-4 py-3 text-muted" title={latest?.reasoning}>
+                        {latest ? (
+                          <div className="flex flex-col gap-1">
+                            <DecisionPill action={latest.action} />
+                            <span className="truncate text-xs">{latest.reasoning}</span>
+                          </div>
+                        ) : (
+                          <span className="text-xs">not yet evaluated</span>
+                        )}
                       </td>
                     </tr>
                   );
@@ -78,27 +120,29 @@ export default async function Home() {
         )}
       </section>
 
-      <section className="flex flex-col gap-3">
-        <h2 className="text-lg font-semibold">Agent decision log</h2>
+      <section className="flex flex-col gap-3 pb-8">
+        <h2 className="text-sm font-semibold uppercase tracking-wide text-muted">Agent decision log</h2>
         {decisions.length === 0 ? (
-          <p className="text-sm text-zinc-500">The agent hasn't run yet.</p>
+          <p className="rounded-xl border border-dashed border-border p-6 text-center text-sm text-muted">
+            The agent hasn't run yet.
+          </p>
         ) : (
-          <ul className="flex flex-col gap-2">
+          <ul className="flex flex-col gap-2.5">
             {decisions.map((d) => (
-              <li key={d.id} className="rounded border border-zinc-200 p-3 text-sm dark:border-zinc-800">
-                <div className="flex justify-between text-zinc-500">
-                  <span>{d.action}</span>
-                  <span>{new Date(d.createdAt).toLocaleString()}</span>
+              <li key={d.id} className="rounded-xl border border-border bg-surface p-4 text-sm shadow-sm">
+                <div className="flex items-center justify-between gap-3">
+                  <DecisionPill action={d.action} />
+                  <span className="text-xs text-muted">{new Date(d.createdAt).toLocaleString()}</span>
                 </div>
-                <p className="mt-1">{d.reasoning}</p>
+                <p className="mt-2 text-foreground">{d.reasoning}</p>
                 {d.txHash && (
                   <a
-                    className="mt-1 inline-block font-mono text-xs text-blue-600 dark:text-blue-400"
+                    className="mt-2 inline-block font-mono text-xs text-accent hover:underline"
                     href={`${ARC_TESTNET.blockExplorer}/tx/${d.txHash}`}
                     target="_blank"
                     rel="noreferrer"
                   >
-                    {d.txHash}
+                    {d.txHash} ↗
                   </a>
                 )}
               </li>

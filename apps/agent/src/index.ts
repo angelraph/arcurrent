@@ -2,8 +2,8 @@ import { config } from "dotenv";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import {
+  getEscrowUsdcBalance,
   getSupabaseServerClient,
-  getTreasuryUsdcBalance,
   settleObligationOnChain,
   toObligation,
   type ObligationRow,
@@ -29,6 +29,10 @@ async function runOnce() {
   if (!walletId) {
     throw new Error("TREASURY_WALLET_ID is not set — run the wallet setup step first.");
   }
+  const escrowAddress = process.env.OBLIGATION_ESCROW_ADDRESS as `0x${string}` | undefined;
+  if (!escrowAddress) {
+    throw new Error("OBLIGATION_ESCROW_ADDRESS is not set — deploy the escrow contract first.");
+  }
 
   const supabase = getSupabaseServerClient();
 
@@ -48,7 +52,7 @@ async function runOnce() {
 
   for (const dbRow of obligations as ObligationRow[]) {
     const row = toObligation(dbRow);
-    const treasuryBalanceUsdc = await getTreasuryUsdcBalance(walletId);
+    const treasuryBalanceUsdc = await getEscrowUsdcBalance(escrowAddress);
 
     const result = decide({
       obligation: row,
@@ -65,9 +69,10 @@ async function runOnce() {
     if (result.action === "pay_now") {
       const { transactionId } = await settleObligationOnChain({
         walletId,
+        escrowAddress,
+        obligationId: row.id,
         destinationAddress: row.destinationAddress,
         amountUsdc: row.amount,
-        refId: row.id,
       });
       txHash = transactionId;
 

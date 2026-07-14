@@ -1,5 +1,6 @@
 import "server-only";
 import {
+  getEscrowUsdcBalance,
   getSupabaseServerClient,
   getTreasuryUsdcBalance,
   toObligation,
@@ -51,13 +52,26 @@ export async function getRecentDecisions(limit = 20): Promise<AgentDecision[]> {
   return (data as DecisionRow[]).map(toDecision);
 }
 
+export interface TreasuryBalances {
+  /** What the agent can actually pay obligations from right now. */
+  escrowUsdc: number | null;
+  /** Sitting in the Circle-custodied wallet but not yet deposited into the escrow. */
+  walletUsdc: number | null;
+}
+
 /**
- * Live treasury balance from Circle. Returns null (not a fake number) when
- * TREASURY_WALLET_ID hasn't been configured yet, so the dashboard can show an
- * honest "not set up" state instead of a fabricated balance.
+ * Live balances from Circle/Arc. Each field is null (not a fake number) when
+ * its address hasn't been configured yet, so the dashboard can show an honest
+ * "not set up" state instead of a fabricated balance.
  */
-export async function getTreasuryBalance(): Promise<number | null> {
+export async function getTreasuryBalance(): Promise<TreasuryBalances> {
   const walletId = process.env.TREASURY_WALLET_ID;
-  if (!walletId) return null;
-  return getTreasuryUsdcBalance(walletId);
+  const escrowAddress = process.env.OBLIGATION_ESCROW_ADDRESS as `0x${string}` | undefined;
+
+  const [walletUsdc, escrowUsdc] = await Promise.all([
+    walletId ? getTreasuryUsdcBalance(walletId) : Promise.resolve(null),
+    escrowAddress ? getEscrowUsdcBalance(escrowAddress) : Promise.resolve(null),
+  ]);
+
+  return { walletUsdc, escrowUsdc };
 }

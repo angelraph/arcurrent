@@ -3,7 +3,11 @@ import {
   type CircleDeveloperControlledWalletsClient,
 } from "@circle-fin/developer-controlled-wallets";
 import { createPublicKey, createVerify, type KeyObject } from "node:crypto";
+import { createPublicClient, http, parseAbi } from "viem";
 import { ARC_TESTNET } from "./chain.js";
+
+const arcPublicClient = createPublicClient({ transport: http(ARC_TESTNET.rpcUrls.default) });
+const erc20BalanceAbi = parseAbi(["function balanceOf(address) view returns (uint256)"]);
 
 let client: CircleDeveloperControlledWalletsClient | null = null;
 
@@ -35,28 +39,49 @@ export async function getTreasuryUsdcBalance(walletId: string): Promise<number> 
   return amount ? Number(amount) : 0;
 }
 
-/** Executes a real USDC transfer on Arc Testnet from the treasury wallet. */
+/**
+ * USDC balance held by the ObligationEscrow contract — the actual spendable
+ * settlement pool, separate from whatever the treasury wallet itself holds
+ * (which may include USDC not yet deposited into the escrow). Plain on-chain
+ * read via RPC; no Circle API call needed.
+ */
+export async function getEscrowUsdcBalance(escrowAddress: `0x${string}`): Promise<number> {
+  const balance = await arcPublicClient.readContract({
+    address: ARC_TESTNET.usdcErc20Address,
+    abi: erc20BalanceAbi,
+    functionName: "balanceOf",
+    args: [escrowAddress],
+  });
+  return Number(balance) / 10 ** ARC_TESTNET.usdcErc20Decimals;
+}
+
+/**
+ * Settles an obligation by calling ObligationEscrow.settle(obligationId,
+ * destination, amount) from the treasury wallet — a contract-execution
+ * transaction, not a plain transfer, so the payout is an on-chain program
+ * action (with its own event log) rather than a bare wallet-to-wallet move.
+ * Reverts on-chain (surfaced as a FAILED Circle transaction) if the escrow's
+ * balance can't cover the amount, or if the caller isn't the escrow's owner.
+ */
 export async function settleObligationOnChain(params: {
   walletId: string;
+  escrowAddress: string;
+  obligationId: string;
   destinationAddress: string;
   amountUsdc: number;
-  refId?: string;
 }): Promise<{ transactionId: string }> {
   const circle = getCircleClient();
-  const res = await circle.createTransaction({
+  const amountAtomic = String(Math.round(params.amountUsdc * 10 ** ARC_TESTNET.usdcErc20Decimals));
+  const res = await circle.createContractExecutionTransaction({
     walletId: params.walletId,
-    // tokenId, not tokenAddress: Circle's transfer endpoint requires tokenId
-    // OR blockchain to be set, and the SDK's types forbid passing blockchain
-    // alongside walletId — confirmed against the live API (see chain.ts).
-    tokenId: ARC_TESTNET.usdcTokenId,
-    amount: [params.amountUsdc.toString()],
-    destinationAddress: params.destinationAddress,
+    contractAddress: params.escrowAddress,
+    abiFunctionSignature: "settle(string,address,uint256)",
+    abiParameters: [params.obligationId, params.destinationAddress, amountAtomic],
     fee: { type: "level", config: { feeLevel: "MEDIUM" } },
-    refId: params.refId,
   });
   const transactionId = res.data?.id;
   if (!transactionId) {
-    throw new Error("Circle createTransaction response did not include a transaction id");
+    throw new Error("Circle createContractExecutionTransaction response did not include a transaction id");
   }
   return { transactionId };
 }

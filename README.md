@@ -35,9 +35,9 @@ apps/
   web/         Next.js dashboard + API routes + Circle webhooks
   agent/       Autonomous decision loop (reads obligations, decides, settles, logs)
 packages/
-  contracts/   Hardhat 3 project — currently the unmodified scaffold (Counter.sol);
-               obligation/escrow logic not yet built (settlement runs through
-               Circle's Developer-Controlled Wallets transfer API directly)
+  contracts/   Hardhat 3 project — ObligationEscrow.sol, a real deployed contract
+               on Arc Testnet that holds the treasury's USDC and executes
+               settlements on the agent's instruction (see Status below)
   shared/      Shared types + Arc network config used by web and agent
 ```
 
@@ -50,10 +50,18 @@ Core spine is real end-to-end, no mock data anywhere in the path:
   (Supabase), and displays the live Circle treasury balance, the obligations list, and
   the agent's decision log with links to Arc Testnet Explorer.
 - Agent (`apps/agent`) reads pending obligations from that same database, runs a
-  deterministic decision function (`decide.ts`, unit-tested) against the real treasury
-  balance, due date, and a configurable reserve floor, and — when it decides to pay —
-  executes a real USDC transfer via Circle's Developer-Controlled Wallets API on Arc
-  Testnet, then writes the decision + reasoning + tx hash back to the database.
+  deterministic decision function (`decide.ts`, unit-tested) against the escrow
+  contract's real USDC balance, due date, and a configurable reserve floor, and — when
+  it decides to pay — calls `ObligationEscrow.settle(obligationId, destination, amount)`
+  as a contract-execution transaction via Circle's Developer-Controlled Wallets API, so
+  settlement is a verifiable on-chain program action (with its own event log) rather
+  than a bare wallet-to-wallet transfer. Reasoning + tx hash get written back to the
+  database either way.
+- `ObligationEscrow.sol` (`packages/contracts`, deployed on Arc Testnet, unit-tested
+  with a mock USDC in an isolated local EVM) holds the treasury's deposited USDC and
+  only lets its owner (the treasury wallet) settle out of it — deposits and settlements
+  both emit events, so the whole payment history is independently verifiable on-chain,
+  not just in Postgres.
 - A webhook route (`/api/circle/webhook`) moves an obligation from `scheduled` to
   `settled`/`failed` once Circle confirms the onchain transaction. Every request's
   `X-Circle-Signature` is verified (ECDSA-SHA256 over the raw body) before anything is
@@ -82,5 +90,12 @@ Known gaps, tracked rather than faked:
 5. `npm run setup:wallet` — creates the real treasury wallet on Arc Testnet and prints
    `TREASURY_WALLET_ID` / `TREASURY_WALLET_ADDRESS` to add to `.env`.
 6. Fund that wallet from the [Circle faucet](https://faucet.circle.com) (select Arc Testnet).
-7. `npm run dev:web` — dashboard at `localhost:3000`.
-8. `npm run dev:agent` — runs one evaluation pass over pending obligations.
+7. Generate a throwaway deployer key (`generatePrivateKey()` from `viem/accounts`), fund
+   it via the faucet, and set `ARC_TESTNET_DEPLOYER_PRIVATE_KEY` — this pays gas to
+   deploy contracts and is separate from the Circle-custodied treasury wallet above.
+8. `npm run deploy:obligation-escrow -w packages/contracts` — deploys `ObligationEscrow`
+   to Arc Testnet and prints its address; set `OBLIGATION_ESCROW_ADDRESS` in `.env`.
+9. Deposit USDC from the treasury wallet into the escrow (`approve` then `deposit`, both
+   as Circle contract-execution transactions) before the agent can settle anything.
+10. `npm run dev:web` — dashboard at `localhost:3000`.
+11. `npm run dev:agent` — runs one evaluation pass over pending obligations.
