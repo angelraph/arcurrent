@@ -8,11 +8,26 @@
     "packages/*"
   ],
   "scripts": {
+    "build:shared": "npm run build -w packages/shared",
+    "predev:web": "npm run build:shared",
     "dev:web": "npm run dev -w apps/web",
+    "predev:agent": "npm run build:shared",
     "dev:agent": "npm run dev -w apps/agent",
+    "presetup:wallet": "npm run build:shared",
+    "setup:wallet": "tsx scripts/generate-wallet.ts",
+    "prebuild": "npm run build:shared",
     "build": "npm run build --workspaces --if-present",
+    "pretest": "npm run build:shared",
     "test": "npm run test --workspaces --if-present",
     "lint": "npm run lint --workspaces --if-present"
+  },
+  "devDependencies": {
+    "tsx": "^4.19.0",
+    "typescript": "^5.5.0"
+  },
+  "dependencies": {
+    "@arcurrent/shared": "*",
+    "dotenv": "^16.4.5"
   },
   "engines": {
     "node": ">=20"

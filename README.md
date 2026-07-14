@@ -41,16 +41,44 @@ packages/
 
 ## Status
 
-Scaffolding stage — toolchain locked, no product logic written yet. Nothing in this
-repo is mock data by design: the agent reads real obligations a real user enters
-through the dashboard, and settles real testnet USDC on Arc. The one gated piece is
-StableFX (RFQ-based, requires requesting access from Circle) — until that access
-lands, the FX adapter is an interface with no implementation behind it, not a fake one.
+Core spine is real end-to-end, no mock data anywhere in the path:
+
+- Dashboard (`apps/web`) lets a real user add an obligation (vendor, amount, currency,
+  due date, destination address) via a Server Action into a real Postgres table
+  (Supabase), and displays the live Circle treasury balance, the obligations list, and
+  the agent's decision log with links to Arc Testnet Explorer.
+- Agent (`apps/agent`) reads pending obligations from that same database, runs a
+  deterministic decision function (`decide.ts`, unit-tested) against the real treasury
+  balance, due date, and a configurable reserve floor, and — when it decides to pay —
+  executes a real USDC transfer via Circle's Developer-Controlled Wallets API on Arc
+  Testnet, then writes the decision + reasoning + tx hash back to the database.
+- A webhook route (`/api/circle/webhook`) moves an obligation from `scheduled` to
+  `settled`/`failed` once Circle confirms the onchain transaction — signature
+  verification on that route is not done yet (see the TODO in the route file).
+- When Circle/Supabase credentials aren't configured, the app fails loudly with a
+  clear error rather than falling back to fake data — confirmed by running it with an
+  empty `.env`.
+
+Known gaps, tracked rather than faked:
+- **StableFX** is gated (RFQ access, no self-serve signup) — non-USDC obligations are
+  correctly flagged `convert_currency` by the decision engine but not yet settled.
+- **Cross-chain liquidity top-up (CCTP/Bridge Kit)** isn't wired in yet — obligations
+  that would breach the reserve floor are flagged `request_liquidity` but not acted on.
+- **Nanopayments** (agent-to-agent micropayment for the FX rate oracle) not yet built.
+- **Webhook signature verification** not yet added (see above).
 
 ## Setup
 
-1. `npm install` at the repo root.
-2. Copy `.env.example` to `.env` and fill in Circle, Supabase, and Arc testnet values.
-3. Get testnet USDC from the [Circle faucet](https://faucet.circle.com) (select Arc Testnet).
-4. `npm run dev:web` — dashboard at `localhost:3000`.
-5. `npm run dev:agent` — starts the decision loop.
+1. `npm install` at the repo root (also builds `packages/shared`).
+2. Copy `.env.example` to `.env`.
+3. Create a Supabase project at [supabase.com](https://supabase.com), then run the
+   migration in `supabase/migrations/` against it (`npx supabase db push` after
+   `npx supabase link`), and fill in the Supabase values in `.env`.
+4. Generate a Circle API key + entity secret at
+   [console.circle.com](https://console.circle.com) and fill in `CIRCLE_API_KEY` /
+   `CIRCLE_ENTITY_SECRET`.
+5. `npm run setup:wallet` — creates the real treasury wallet on Arc Testnet and prints
+   `TREASURY_WALLET_ID` / `TREASURY_WALLET_ADDRESS` to add to `.env`.
+6. Fund that wallet from the [Circle faucet](https://faucet.circle.com) (select Arc Testnet).
+7. `npm run dev:web` — dashboard at `localhost:3000`.
+8. `npm run dev:agent` — runs one evaluation pass over pending obligations.
