@@ -9,6 +9,7 @@ coverage/
 .env.local
 .env.*.local
 .DS_Store
+recovery_file_*.dat
 cache/
 artifacts/
 typechain-types/

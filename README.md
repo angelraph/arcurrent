@@ -35,7 +35,9 @@ apps/
   web/         Next.js dashboard + API routes + Circle webhooks
   agent/       Autonomous decision loop (reads obligations, decides, settles, logs)
 packages/
-  contracts/   Hardhat 3 project — onchain obligation/escrow logic
+  contracts/   Hardhat 3 project — currently the unmodified scaffold (Counter.sol);
+               obligation/escrow logic not yet built (settlement runs through
+               Circle's Developer-Controlled Wallets transfer API directly)
   shared/      Shared types + Arc network config used by web and agent
 ```
 
@@ -53,8 +55,9 @@ Core spine is real end-to-end, no mock data anywhere in the path:
   executes a real USDC transfer via Circle's Developer-Controlled Wallets API on Arc
   Testnet, then writes the decision + reasoning + tx hash back to the database.
 - A webhook route (`/api/circle/webhook`) moves an obligation from `scheduled` to
-  `settled`/`failed` once Circle confirms the onchain transaction — signature
-  verification on that route is not done yet (see the TODO in the route file).
+  `settled`/`failed` once Circle confirms the onchain transaction. Every request's
+  `X-Circle-Signature` is verified (ECDSA-SHA256 over the raw body) before anything is
+  trusted; unverified/malformed requests get a clean `401`, never a crash.
 - When Circle/Supabase credentials aren't configured, the app fails loudly with a
   clear error rather than falling back to fake data — confirmed by running it with an
   empty `.env`.
@@ -65,7 +68,6 @@ Known gaps, tracked rather than faked:
 - **Cross-chain liquidity top-up (CCTP/Bridge Kit)** isn't wired in yet — obligations
   that would breach the reserve floor are flagged `request_liquidity` but not acted on.
 - **Nanopayments** (agent-to-agent micropayment for the FX rate oracle) not yet built.
-- **Webhook signature verification** not yet added (see above).
 
 ## Setup
 

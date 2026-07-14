@@ -1,4 +1,6 @@
-import "dotenv/config";
+import { config } from "dotenv";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import {
   getSupabaseServerClient,
   getTreasuryUsdcBalance,
@@ -8,6 +10,10 @@ import {
   type NewAgentDecisionRow,
 } from "@arcurrent/shared";
 import { decide } from "./decide.js";
+
+// Monorepo root .env — dotenv/config alone loads from this workspace's own
+// directory (apps/agent), not the workspace root where the shared .env lives.
+config({ path: path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../../.env") });
 
 const RESERVE_THRESHOLD_USDC = Number(process.env.TREASURY_RESERVE_USDC ?? "0");
 const PAY_AHEAD_WINDOW_DAYS = Number(process.env.AGENT_PAY_AHEAD_WINDOW_DAYS ?? "3");

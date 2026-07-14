@@ -22,6 +22,15 @@ export const ARC_TESTNET = {
    */
   usdcErc20Address: "0x3600000000000000000000000000000000000000" as const,
   usdcErc20Decimals: 6,
+  /**
+   * Circle's own token identifier for USDC on ARC-TESTNET, required by
+   * `createTransaction` (tokenAddress alone is rejected with "API parameter
+   * invalid" — Circle's transfer endpoint requires `tokenId` OR `blockchain`,
+   * confirmed against the live API on 2026-07-14). Resolved via a
+   * `getWalletTokenBalance` call; stable across wallets since it's derived
+   * from the (blockchain, tokenAddress) pair, not account-specific.
+   */
+  usdcTokenId: "ef87c8c3-85de-598a-af50-c5135eecfa74" as const,
   /** CCTP domain ID for Arc — used by Bridge Kit when routing cross-chain transfers. */
   cctpDomainId: 26,
 } as const;

@@ -1,4 +1,8 @@
-import { getSupabaseServerClient } from "@arcurrent/shared";
+import {
+  fetchNotificationPublicKey,
+  getSupabaseServerClient,
+  verifyWebhookSignature,
+} from "@arcurrent/shared";
 import { NextResponse } from "next/server";
 
 /**
@@ -6,11 +10,11 @@ import { NextResponse } from "next/server";
  * "scheduled" to "settled"/"failed" once the onchain transaction confirms.
  * `refId` on the transaction is the obligation id (set in settleObligationOnChain).
  *
- * NOT YET DONE: signature verification. Circle signs every webhook with
- * `X-Circle-Signature` / `X-Circle-Key-Id` headers — verify them via the
- * SDK's `client.getPublicKey()` (developer-controlled-wallets) before this
- * handles anything but testnet traffic. Skipped for now to keep hackathon
- * scope moving; tracked here rather than silently ignored.
+ * Every request is verified against `X-Circle-Signature` (ECDSA-SHA256,
+ * base64) using the public key for `X-Circle-Key-Id`, fetched from
+ * `GET /v2/notifications/publicKey/{keyId}`. Verification runs against the
+ * *raw* body text — parsing to JSON and re-serializing changes byte order and
+ * breaks the signature, so `request.text()` is read before any JSON.parse.
  *
  * The exact envelope shape below (`notification.state` / `notification.refId`)
  * matches Circle's documented webhook format but hasn't been exercised against
@@ -18,7 +22,27 @@ import { NextResponse } from "next/server";
  * WEBHOOK_ENDPOINT_URL at an ngrok tunnel and trigger a real transfer).
  */
 export async function POST(request: Request) {
-  const body = await request.json();
+  const rawBody = await request.text();
+  const signature = request.headers.get("x-circle-signature");
+  const keyId = request.headers.get("x-circle-key-id");
+
+  if (!signature || !keyId) {
+    return NextResponse.json({ error: "Missing signature headers" }, { status: 401 });
+  }
+
+  let verified: boolean;
+  try {
+    const publicKey = await fetchNotificationPublicKey(keyId);
+    verified = verifyWebhookSignature(rawBody, signature, publicKey);
+  } catch (err) {
+    console.error("Webhook signature verification failed:", err);
+    verified = false;
+  }
+  if (!verified) {
+    return NextResponse.json({ error: "Invalid webhook signature" }, { status: 401 });
+  }
+
+  const body = JSON.parse(rawBody);
   const notification = body.notification ?? body;
 
   const state: string | undefined = notification?.state;
