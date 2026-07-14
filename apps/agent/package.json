@@ -1,0 +1,30 @@
+{
+  "name": "agent",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Arcurrent treasury agent — reads obligations, decides, settles USDC on Arc.",
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "start": "node dist/index.js",
+    "build": "tsc -p tsconfig.json",
+    "test": "vitest run",
+    "lint": "eslint ."
+  },
+  "dependencies": {
+    "@arcurrent/shared": "*",
+    "@circle-fin/developer-controlled-wallets": "^10.8.0",
+    "@circle-fin/app-kit": "^1.9.0",
+    "@circle-fin/x402-batching": "^3.2.0",
+    "@supabase/supabase-js": "^2.45.0",
+    "dotenv": "^16.4.5",
+    "viem": "^2.21.0",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.5.0",
+    "vitest": "^2.0.0"
+  }
+}
