@@ -13,6 +13,7 @@
     "dev:web": "npm run dev -w apps/web",
     "predev:agent": "npm run build:shared",
     "dev:agent": "npm run dev -w apps/agent",
+    "dev:oracle": "npm run dev -w apps/oracle",
     "presetup:wallet": "npm run build:shared",
     "setup:wallet": "tsx scripts/generate-wallet.ts",
     "prebuild": "npm run build:shared",

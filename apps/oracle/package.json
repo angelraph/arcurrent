@@ -1,0 +1,25 @@
+{
+  "name": "oracle",
+  "version": "0.1.0",
+  "private": true,
+  "description": "x402-protected FX rate oracle the agent pays a sub-cent nanopayment to consult before settling non-USDC obligations.",
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "start": "node dist/index.js",
+    "build": "tsc -p tsconfig.json",
+    "lint": "eslint ."
+  },
+  "dependencies": {
+    "@circle-fin/x402-batching": "^3.2.0",
+    "@x402/evm": "^2.18.0",
+    "dotenv": "^16.4.5",
+    "express": "^4.21.0"
+  },
+  "devDependencies": {
+    "@types/express": "^4.17.21",
+    "@types/node": "^20.14.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.5.0"
+  }
+}

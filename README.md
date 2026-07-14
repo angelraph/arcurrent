@@ -34,6 +34,9 @@ docs.arc.io, chainlist.org, and the npm registry on 2026-07-14).
 apps/
   web/         Next.js dashboard + API routes + Circle webhooks
   agent/       Autonomous decision loop (reads obligations, decides, settles, logs)
+  oracle/      x402-protected FX rate oracle — the agent pays it a sub-cent
+               nanopayment via Circle Gateway before recording a convert_currency
+               decision (real payment, real rate; StableFX itself stays gated)
 packages/
   contracts/   Hardhat 3 project — ObligationEscrow.sol, a real deployed contract
                on Arc Testnet that holds the treasury's USDC and executes
@@ -69,13 +72,19 @@ Core spine is real end-to-end, no mock data anywhere in the path:
 - When Circle/Supabase credentials aren't configured, the app fails loudly with a
   clear error rather than falling back to fake data — confirmed by running it with an
   empty `.env`.
+- **Nanopayments**: when an obligation is denominated in EURC, the agent pays
+  `apps/oracle`'s `/rate` route a real `$0.001` x402 payment (Circle Gateway,
+  gas-free — settled off-chain as a signed authorization, batched on-chain later)
+  and gets back a live EUR/USD rate from a real public rate provider (no mock data).
+  The rate, source, and payment id are written into the decision's signals. This
+  doesn't execute a conversion — that's still blocked on StableFX (see below) — it
+  proves the agent-pays-for-a-service nanopayment flow end-to-end.
 
 Known gaps, tracked rather than faked:
 - **StableFX** is gated (RFQ access, no self-serve signup) — non-USDC obligations are
   correctly flagged `convert_currency` by the decision engine but not yet settled.
 - **Cross-chain liquidity top-up (CCTP/Bridge Kit)** isn't wired in yet — obligations
   that would breach the reserve floor are flagged `request_liquidity` but not acted on.
-- **Nanopayments** (agent-to-agent micropayment for the FX rate oracle) not yet built.
 
 ## Setup
 
@@ -97,5 +106,10 @@ Known gaps, tracked rather than faked:
    to Arc Testnet and prints its address; set `OBLIGATION_ESCROW_ADDRESS` in `.env`.
 9. Deposit USDC from the treasury wallet into the escrow (`approve` then `deposit`, both
    as Circle contract-execution transactions) before the agent can settle anything.
-10. `npm run dev:web` — dashboard at `localhost:3000`.
-11. `npm run dev:agent` — runs one evaluation pass over pending obligations.
+10. Generate a second throwaway EOA (`AGENT_X402_PRIVATE_KEY`) and an address-only
+    `ORACLE_SELLER_ADDRESS` (no key needed — it only receives payments). Fund the
+    x402 key with native gas + USDC via the faucet, then run
+    `tsx scripts/deposit-gateway.ts <amount>` once to fund its Circle Gateway balance.
+11. `npm run dev:oracle` — starts the rate oracle at `localhost:4000`.
+12. `npm run dev:web` — dashboard at `localhost:3000`.
+13. `npm run dev:agent` — runs one evaluation pass over pending obligations.

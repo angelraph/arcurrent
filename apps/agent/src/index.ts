@@ -4,6 +4,7 @@ import { fileURLToPath } from "node:url";
 import {
   getEscrowUsdcBalance,
   getSupabaseServerClient,
+  payForFxRate,
   settleObligationOnChain,
   toObligation,
   type ObligationRow,
@@ -65,6 +66,8 @@ async function runOnce() {
     console.log(`[${row.vendorName}] ${result.action} — ${result.reasoning}`);
 
     let txHash: string | undefined;
+    let reasoning = result.reasoning;
+    let signals: Record<string, unknown> = result.signals;
 
     if (result.action === "pay_now") {
       const { transactionId } = await settleObligationOnChain({
@@ -77,13 +80,35 @@ async function runOnce() {
       txHash = transactionId;
 
       await supabase.from("obligations").update({ status: "scheduled" }).eq("id", row.id);
+    } else if (result.action === "convert_currency") {
+      // StableFX itself is still gated (see README), but the rate consultation
+      // is real: the agent pays the oracle a sub-cent x402 nanopayment for the
+      // reference rate before recording why it can't settle yet.
+      const oracleUrl = process.env.ORACLE_URL;
+      const x402Key = process.env.AGENT_X402_PRIVATE_KEY as `0x${string}` | undefined;
+      if (oracleUrl && x402Key) {
+        const rate = await payForFxRate({ oracleUrl, privateKey: x402Key });
+        signals = {
+          ...signals,
+          fxPair: rate.pair,
+          fxRate: rate.rate,
+          fxAsOf: rate.asOf,
+          fxSource: rate.source,
+          fxNanopaymentTx: rate.paymentTxHash,
+          fxNanopaymentAmountUsdc: rate.amountPaidUsdc,
+        };
+        reasoning =
+          `${reasoning} Paid the rate oracle ${rate.amountPaidUsdc} USDC via x402 for the current rate: ` +
+          `1 ${rate.pair.slice(0, 3)} = ${rate.rate} ${rate.pair.slice(3)} (as of ${rate.asOf}, ${rate.source}).`;
+        console.log(`  -> ${reasoning}`);
+      }
     }
 
     const decisionRow: NewAgentDecisionRow = {
       obligation_id: row.id,
       action: result.action,
-      reasoning: result.reasoning,
-      signals: result.signals,
+      reasoning,
+      signals,
       tx_hash: txHash ?? null,
     };
     await supabase.from("agent_decisions").insert(decisionRow);
