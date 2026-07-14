@@ -1,31 +1,13 @@
 import { config } from "dotenv";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import {
-  getEscrowUsdcBalance,
-  getSupabaseServerClient,
-  payForFxRate,
-  settleObligationOnChain,
-  toObligation,
-  type ObligationRow,
-  type NewAgentDecisionRow,
-} from "@arcurrent/shared";
-import { decide } from "./decide.js";
+import { evaluatePendingObligations } from "@arcurrent/shared";
 
 // Monorepo root .env — dotenv/config alone loads from this workspace's own
 // directory (apps/agent), not the workspace root where the shared .env lives.
 config({ path: path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../../.env") });
 
-const RESERVE_THRESHOLD_USDC = Number(process.env.TREASURY_RESERVE_USDC ?? "0");
-const PAY_AHEAD_WINDOW_DAYS = Number(process.env.AGENT_PAY_AHEAD_WINDOW_DAYS ?? "3");
-
-/**
- * One evaluation pass over every pending obligation: decide, execute if the
- * decision is to pay, and persist the decision either way. Balance is
- * re-fetched between obligations since paying one changes what's affordable
- * for the next.
- */
-async function runOnce() {
+async function main() {
   const walletId = process.env.TREASURY_WALLET_ID;
   if (!walletId) {
     throw new Error("TREASURY_WALLET_ID is not set — run the wallet setup step first.");
@@ -35,87 +17,25 @@ async function runOnce() {
     throw new Error("OBLIGATION_ESCROW_ADDRESS is not set — deploy the escrow contract first.");
   }
 
-  const supabase = getSupabaseServerClient();
+  const oracleUrl = process.env.ORACLE_URL;
+  const x402Key = process.env.AGENT_X402_PRIVATE_KEY as `0x${string}` | undefined;
 
-  const { data: obligations, error } = await supabase
-    .from("obligations")
-    .select("*")
-    .eq("status", "pending")
-    .order("due_date", { ascending: true });
+  const summary = await evaluatePendingObligations({
+    walletId,
+    escrowAddress,
+    reserveThresholdUsdc: Number(process.env.TREASURY_RESERVE_USDC ?? "0"),
+    payAheadWindowDays: Number(process.env.AGENT_PAY_AHEAD_WINDOW_DAYS ?? "3"),
+    oracle: oracleUrl && x402Key ? { url: oracleUrl, privateKey: x402Key } : undefined,
+  });
 
-  if (error) throw error;
-  if (!obligations || obligations.length === 0) {
-    console.log("No pending obligations.");
-    return;
-  }
-
-  console.log(`Evaluating ${obligations.length} pending obligation(s)...`);
-
-  for (const dbRow of obligations as ObligationRow[]) {
-    const row = toObligation(dbRow);
-    const treasuryBalanceUsdc = await getEscrowUsdcBalance(escrowAddress);
-
-    const result = decide({
-      obligation: row,
-      treasuryBalanceUsdc,
-      reserveThresholdUsdc: RESERVE_THRESHOLD_USDC,
-      payAheadWindowDays: PAY_AHEAD_WINDOW_DAYS,
-      now: new Date(),
-    });
-
-    console.log(`[${row.vendorName}] ${result.action} — ${result.reasoning}`);
-
-    let txHash: string | undefined;
-    let reasoning = result.reasoning;
-    let signals: Record<string, unknown> = result.signals;
-
-    if (result.action === "pay_now") {
-      const { transactionId } = await settleObligationOnChain({
-        walletId,
-        escrowAddress,
-        obligationId: row.id,
-        destinationAddress: row.destinationAddress,
-        amountUsdc: row.amount,
-      });
-      txHash = transactionId;
-
-      await supabase.from("obligations").update({ status: "scheduled" }).eq("id", row.id);
-    } else if (result.action === "convert_currency") {
-      // StableFX itself is still gated (see README), but the rate consultation
-      // is real: the agent pays the oracle a sub-cent x402 nanopayment for the
-      // reference rate before recording why it can't settle yet.
-      const oracleUrl = process.env.ORACLE_URL;
-      const x402Key = process.env.AGENT_X402_PRIVATE_KEY as `0x${string}` | undefined;
-      if (oracleUrl && x402Key) {
-        const rate = await payForFxRate({ oracleUrl, privateKey: x402Key });
-        signals = {
-          ...signals,
-          fxPair: rate.pair,
-          fxRate: rate.rate,
-          fxAsOf: rate.asOf,
-          fxSource: rate.source,
-          fxNanopaymentTx: rate.paymentTxHash,
-          fxNanopaymentAmountUsdc: rate.amountPaidUsdc,
-        };
-        reasoning =
-          `${reasoning} Paid the rate oracle ${rate.amountPaidUsdc} USDC via x402 for the current rate: ` +
-          `1 ${rate.pair.slice(0, 3)} = ${rate.rate} ${rate.pair.slice(3)} (as of ${rate.asOf}, ${rate.source}).`;
-        console.log(`  -> ${reasoning}`);
-      }
-    }
-
-    const decisionRow: NewAgentDecisionRow = {
-      obligation_id: row.id,
-      action: result.action,
-      reasoning,
-      signals,
-      tx_hash: txHash ?? null,
-    };
-    await supabase.from("agent_decisions").insert(decisionRow);
-  }
+  console.log(
+    summary.evaluated === 0
+      ? "No pending obligations."
+      : `Evaluated ${summary.evaluated} obligation(s): ${JSON.stringify(summary.actions)}`
+  );
 }
 
-runOnce().catch((err) => {
+main().catch((err) => {
   console.error(err);
   process.exit(1);
 });

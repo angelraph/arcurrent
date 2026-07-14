@@ -1,4 +1,4 @@
-import type { AgentDecision, DecisionAction, Obligation } from "@arcurrent/shared";
+import type { AgentDecision, DecisionAction, Obligation } from "./types.js";
 
 export interface DecisionInput {
   obligation: Obligation;

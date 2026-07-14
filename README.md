@@ -52,14 +52,18 @@ Core spine is real end-to-end, no mock data anywhere in the path:
   due date, destination address) via a Server Action into a real Postgres table
   (Supabase), and displays the live Circle treasury balance, the obligations list, and
   the agent's decision log with links to Arc Testnet Explorer.
-- Agent (`apps/agent`) reads pending obligations from that same database, runs a
-  deterministic decision function (`decide.ts`, unit-tested) against the escrow
-  contract's real USDC balance, due date, and a configurable reserve floor, and — when
-  it decides to pay — calls `ObligationEscrow.settle(obligationId, destination, amount)`
-  as a contract-execution transaction via Circle's Developer-Controlled Wallets API, so
+- The evaluation loop (`packages/shared/src/evaluate.ts`, built on the unit-tested
+  `decide.ts`) reads pending obligations, decides against the escrow contract's real
+  USDC balance, due date, and a configurable reserve floor, and — when it decides to
+  pay — calls `ObligationEscrow.settle(obligationId, destination, amount)` as a
+  contract-execution transaction via Circle's Developer-Controlled Wallets API, so
   settlement is a verifiable on-chain program action (with its own event log) rather
   than a bare wallet-to-wallet transfer. Reasoning + tx hash get written back to the
-  database either way.
+  database either way. There's exactly one implementation of this loop, run from two
+  places: `apps/agent` (standalone, for local/manual runs) and a Vercel Cron route
+  (`apps/web/src/app/api/cron/evaluate`, for it to actually run autonomously once
+  deployed — see `apps/web/vercel.json`). The route fails closed on a missing/wrong
+  `CRON_SECRET`, since a real hit here moves real USDC.
 - `ObligationEscrow.sol` (`packages/contracts`, deployed on Arc Testnet, unit-tested
   with a mock USDC in an isolated local EVM) holds the treasury's deposited USDC and
   only lets its owner (the treasury wallet) settle out of it — deposits and settlements
@@ -113,3 +117,14 @@ Known gaps, tracked rather than faked:
 11. `npm run dev:oracle` — starts the rate oracle at `localhost:4000`.
 12. `npm run dev:web` — dashboard at `localhost:3000`.
 13. `npm run dev:agent` — runs one evaluation pass over pending obligations.
+
+### Deploying (Vercel Cron for autonomous evaluation)
+
+Deploy `apps/web` to Vercel (set its directory as the project root) with all the
+`.env` values above as project env vars, plus a generated `CRON_SECRET`
+(`node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`).
+`vercel.json` schedules `GET /api/cron/evaluate` every 15 minutes — check that
+frequency against your actual Vercel plan's cron limits before relying on it.
+Without this, the agent only evaluates obligations when someone runs
+`npm run dev:agent`/`start` manually; with it, settlement genuinely runs with no
+human in the loop.

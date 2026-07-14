@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { decide } from "./decide.js";
-import type { Obligation } from "@arcurrent/shared";
+import type { Obligation } from "./types.js";
 
 const baseObligation: Obligation = {
   id: "test-obligation",
