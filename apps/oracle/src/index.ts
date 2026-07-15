@@ -42,6 +42,14 @@ app.get("/rate", gateway.require("$0.001"), async (_req, res) => {
   res.json({ pair: "EURUSD", rate: body.rates.USD, asOf: body.date, source: "api.frankfurter.dev" });
 });
 
-app.listen(PORT, () => {
-  console.log(`Rate oracle listening on :${PORT} (seller ${sellerAddress})`);
-});
+// Vercel's Node runtime imports this module as a request handler — it does
+// not keep a persistent listening port, so app.listen() must only run for
+// local/standalone hosting (tsx watch, or `node dist/index.js` on a real
+// host). Vercel sets VERCEL=1 in every deployed function's environment.
+if (!process.env.VERCEL) {
+  app.listen(PORT, () => {
+    console.log(`Rate oracle listening on :${PORT} (seller ${sellerAddress})`);
+  });
+}
+
+export default app;
