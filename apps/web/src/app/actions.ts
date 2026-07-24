@@ -1,7 +1,8 @@
 "use server";
 
-import { getSupabaseServerClient, type Currency } from "@arcurrent/shared";
+import { evaluatePendingObligations, getSupabaseServerClient, type Currency } from "@arcurrent/shared";
 import { revalidatePath } from "next/cache";
+import { getEvaluateConfigFromEnv } from "@/lib/evaluate-config";
 
 export interface CreateObligationState {
   error?: string;
@@ -35,6 +36,16 @@ export async function createObligation(
   });
 
   if (error) return { error: error.message };
+
+  // Evaluate right away instead of waiting for the next cron tick (up to 24h
+  // on the Hobby plan) — the same evaluatePendingObligations() the cron
+  // route and apps/agent run, just triggered by the add instead of a clock.
+  // Config missing (e.g. incomplete local .env) isn't a reason to fail the
+  // obligation itself — it just falls back to waiting for the next cron run.
+  const config = getEvaluateConfigFromEnv();
+  if (!("error" in config)) {
+    await evaluatePendingObligations(config);
+  }
 
   revalidatePath("/dashboard");
   return {};

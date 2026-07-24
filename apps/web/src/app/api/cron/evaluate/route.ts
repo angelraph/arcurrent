@@ -1,6 +1,6 @@
-import { BridgeChain } from "@circle-fin/app-kit";
 import { evaluatePendingObligations } from "@arcurrent/shared";
 import { NextResponse } from "next/server";
+import { getEvaluateConfigFromEnv } from "@/lib/evaluate-config";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -23,32 +23,11 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const walletId = process.env.TREASURY_WALLET_ID;
-  const walletAddress = process.env.TREASURY_WALLET_ADDRESS;
-  const escrowAddress = process.env.OBLIGATION_ESCROW_ADDRESS as `0x${string}` | undefined;
-  if (!walletId || !walletAddress || !escrowAddress) {
-    return NextResponse.json(
-      { error: "TREASURY_WALLET_ID, TREASURY_WALLET_ADDRESS, and OBLIGATION_ESCROW_ADDRESS must be set" },
-      { status: 500 }
-    );
+  const config = getEvaluateConfigFromEnv();
+  if ("error" in config) {
+    return NextResponse.json({ error: config.error }, { status: 500 });
   }
 
-  const oracleUrl = process.env.ORACLE_URL;
-  const x402Key = process.env.AGENT_X402_PRIVATE_KEY as `0x${string}` | undefined;
-
-  const liquiditySourceAddress = process.env.LIQUIDITY_WALLET_ADDRESS;
-
-  const summary = await evaluatePendingObligations({
-    walletId,
-    walletAddress,
-    escrowAddress,
-    reserveThresholdUsdc: Number(process.env.TREASURY_RESERVE_USDC ?? "0"),
-    payAheadWindowDays: Number(process.env.AGENT_PAY_AHEAD_WINDOW_DAYS ?? "3"),
-    oracle: oracleUrl && x402Key ? { url: oracleUrl, privateKey: x402Key } : undefined,
-    liquidity: liquiditySourceAddress
-      ? { sourceChain: BridgeChain.Base_Sepolia, sourceAddress: liquiditySourceAddress }
-      : undefined,
-  });
-
+  const summary = await evaluatePendingObligations(config);
   return NextResponse.json(summary);
 }

@@ -1,11 +1,15 @@
 import { getObligations, getRecentDecisions, getTreasuryBalance } from "@/lib/data";
 import { formatUsdc } from "@/lib/format";
-import { Nav } from "../nav";
-import { ObligationForm } from "../obligation-form";
-import { DecisionPill, StatusPill } from "../status-pill";
+import { Nav } from "../../nav";
+import { ObligationForm } from "../../obligation-form";
+import { DecisionPill, StatusPill } from "../../status-pill";
 import { ARC_TESTNET } from "@arcurrent/shared";
 
 export const dynamic = "force-dynamic";
+// Adding an obligation triggers a real evaluation pass (see actions.ts) --
+// possibly a CCTP bridge, which can take a while. Same 60s ceiling as the
+// cron route.
+export const maxDuration = 60;
 
 export default async function DashboardPage() {
   const [balance, obligations, decisions] = await Promise.all([
@@ -82,6 +86,7 @@ export default async function DashboardPage() {
                     <th className="px-4 py-3 font-medium">Vendor</th>
                     <th className="px-4 py-3 font-medium">Amount</th>
                     <th className="px-4 py-3 font-medium">Due</th>
+                    <th className="px-4 py-3 font-medium">Added</th>
                     <th className="px-4 py-3 font-medium">Status</th>
                     <th className="px-4 py-3 font-medium">Latest decision</th>
                   </tr>
@@ -96,6 +101,14 @@ export default async function DashboardPage() {
                           {formatUsdc(o.amount)} <span className="text-muted">{o.currency}</span>
                         </td>
                         <td className="px-4 py-3 text-muted">{o.dueDate}</td>
+                        <td className="px-4 py-3 text-muted" title={new Date(o.createdAt).toLocaleString()}>
+                          {new Date(o.createdAt).toLocaleString(undefined, {
+                            month: "short",
+                            day: "numeric",
+                            hour: "numeric",
+                            minute: "2-digit",
+                          })}
+                        </td>
                         <td className="px-4 py-3">
                           <StatusPill status={o.status} />
                         </td>

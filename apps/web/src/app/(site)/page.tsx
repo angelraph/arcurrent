@@ -1,6 +1,6 @@
-import { Explainer } from "./explainer";
-import { Hero } from "./hero";
-import { Nav } from "./nav";
+import { Explainer } from "../explainer";
+import { Hero } from "../hero";
+import { Nav } from "../nav";
 
 export default function Home() {
   return (
