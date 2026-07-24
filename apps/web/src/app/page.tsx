@@ -1,5 +1,6 @@
 import { getObligations, getRecentDecisions, getTreasuryBalance } from "@/lib/data";
 import { formatUsdc } from "@/lib/format";
+import { Explainer } from "./explainer";
 import { ObligationForm } from "./obligation-form";
 import { DecisionPill, StatusPill } from "./status-pill";
 import { ARC_TESTNET } from "@arcurrent/shared";
@@ -33,6 +34,8 @@ export default async function Home() {
           Arc Testnet · chain {ARC_TESTNET.chainId}
         </span>
       </header>
+
+      <Explainer />
 
       <section className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div className="rounded-xl border border-border bg-surface p-5 shadow-sm">
