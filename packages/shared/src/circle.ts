@@ -78,6 +78,11 @@ export async function settleObligationOnChain(params: {
     abiFunctionSignature: "settle(string,address,uint256)",
     abiParameters: [params.obligationId, params.destinationAddress, amountAtomic],
     fee: { type: "level", config: { feeLevel: "MEDIUM" } },
+    // The webhook route matches incoming Circle notifications back to an
+    // obligation via this refId — without it, the webhook has no way to know
+    // which row to update and settlement transactions stay "scheduled"
+    // forever regardless of what actually happens on-chain.
+    refId: params.obligationId,
   });
   const transactionId = res.data?.id;
   if (!transactionId) {

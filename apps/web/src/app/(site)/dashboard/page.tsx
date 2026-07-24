@@ -146,7 +146,7 @@ export default async function DashboardPage() {
                     <span className="text-xs text-muted">{new Date(d.createdAt).toLocaleString()}</span>
                   </div>
                   <p className="mt-2 text-foreground">{d.reasoning}</p>
-                  {d.txHash && (
+                  {d.txHash && /^0x[a-fA-F0-9]+$/.test(d.txHash) ? (
                     <a
                       className="mt-2 inline-block font-mono text-xs text-accent hover:underline"
                       href={`${ARC_TESTNET.blockExplorer}/tx/${d.txHash}`}
@@ -155,6 +155,12 @@ export default async function DashboardPage() {
                     >
                       {d.txHash} ↗
                     </a>
+                  ) : (
+                    d.txHash && (
+                      <p className="mt-2 font-mono text-xs text-muted">
+                        Submitted, waiting for on-chain confirmation to get a verifiable hash&hellip;
+                      </p>
+                    )
                   )}
                 </li>
               ))}

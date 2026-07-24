@@ -47,6 +47,8 @@ export async function POST(request: Request) {
 
   const state: string | undefined = notification?.state;
   const refId: string | undefined = notification?.refId;
+  const circleTransactionId: string | undefined = notification?.id;
+  const txHash: string | undefined = notification?.txHash;
 
   if (!refId || !state) {
     return NextResponse.json({ received: true, note: "no refId/state to act on" });
@@ -58,6 +60,15 @@ export async function POST(request: Request) {
   if (nextStatus) {
     const supabase = getSupabaseServerClient();
     await supabase.from("obligations").update({ status: nextStatus }).eq("id", refId);
+    // txHash only exists once the transaction actually lands on-chain — not
+    // at submission time, when settleObligationOnChain could only store
+    // Circle's own transaction id. This is the one place the real hash
+    // becomes available, so swap it in (matched on that same Circle id,
+    // not obligation_id, so this can't touch an unrelated decision row for
+    // the same obligation) so the explorer link actually resolves.
+    if (txHash && circleTransactionId) {
+      await supabase.from("agent_decisions").update({ tx_hash: txHash }).eq("tx_hash", circleTransactionId);
+    }
   }
 
   return NextResponse.json({ received: true });
