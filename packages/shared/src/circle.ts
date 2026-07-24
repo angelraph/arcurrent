@@ -3,10 +3,21 @@ import {
   type CircleDeveloperControlledWalletsClient,
 } from "@circle-fin/developer-controlled-wallets";
 import { createPublicKey, createVerify, type KeyObject } from "node:crypto";
-import { createPublicClient, http, parseAbi } from "viem";
+import { createPublicClient, fallback, http, parseAbi } from "viem";
 import { ARC_TESTNET } from "./chain.js";
 
-const arcPublicClient = createPublicClient({ transport: http(ARC_TESTNET.rpcUrls.default) });
+// Arc Testnet's default public RPC rate-limits under moderate load (seen in
+// production: "request limit reached" on eth_call during a burst of
+// webhook + balance-read activity). Falls back across the other publicly
+// documented endpoints instead of hard-failing the whole page.
+const arcPublicClient = createPublicClient({
+  transport: fallback([
+    http(ARC_TESTNET.rpcUrls.default),
+    http(ARC_TESTNET.rpcUrls.blockdaemon),
+    http(ARC_TESTNET.rpcUrls.drpc),
+    http(ARC_TESTNET.rpcUrls.quicknode),
+  ]),
+});
 const erc20BalanceAbi = parseAbi(["function balanceOf(address) view returns (uint256)"]);
 
 let client: CircleDeveloperControlledWalletsClient | null = null;
