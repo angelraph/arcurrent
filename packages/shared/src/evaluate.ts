@@ -1,16 +1,26 @@
+import type { BridgeChain } from "@circle-fin/app-kit";
 import { decide } from "./decide.js";
 import { getEscrowUsdcBalance, settleObligationOnChain } from "./circle.js";
+import { topUpEscrowLiquidity } from "./liquidity.js";
 import { payForFxRate } from "./nanopayments.js";
 import { getSupabaseServerClient } from "./supabase.js";
 import { toObligation, type NewAgentDecisionRow, type ObligationRow } from "./types.js";
 
 export interface EvaluateConfig {
   walletId: string;
+  walletAddress: string;
   escrowAddress: `0x${string}`;
   reserveThresholdUsdc: number;
   payAheadWindowDays: number;
   /** Omit to skip the nanopayment rate consultation on convert_currency obligations. */
   oracle?: { url: string; privateKey: `0x${string}` };
+  /**
+   * Omit to leave request_liquidity as a flag-only decision (no top-up
+   * attempted). When set, a request_liquidity decision triggers a real CCTP
+   * bridge from this Circle-custodied wallet into the treasury, followed by
+   * an escrow deposit — see topUpEscrowLiquidity in liquidity.ts.
+   */
+  liquidity?: { sourceChain: BridgeChain; sourceAddress: string };
 }
 
 export interface EvaluateSummary {
@@ -26,7 +36,8 @@ export interface EvaluateSummary {
  * the Vercel Cron route (apps/web) so there's exactly one implementation.
  */
 export async function evaluatePendingObligations(config: EvaluateConfig): Promise<EvaluateSummary> {
-  const { walletId, escrowAddress, reserveThresholdUsdc, payAheadWindowDays, oracle } = config;
+  const { walletId, walletAddress, escrowAddress, reserveThresholdUsdc, payAheadWindowDays, oracle, liquidity } =
+    config;
   const supabase = getSupabaseServerClient();
 
   const { data: obligations, error } = await supabase
@@ -84,6 +95,30 @@ export async function evaluatePendingObligations(config: EvaluateConfig): Promis
       reasoning =
         `${reasoning} Paid the rate oracle ${rate.amountPaidUsdc} USDC via x402 for the current rate: ` +
         `1 ${rate.pair.slice(0, 3)} = ${rate.rate} ${rate.pair.slice(3)} (as of ${rate.asOf}, ${rate.source}).`;
+    } else if (result.action === "request_liquidity" && liquidity) {
+      // Bridge exactly the shortfall — enough to cover this obligation while
+      // keeping the reserve floor intact. Settling from the topped-up balance
+      // is left to the next evaluation pass (see topUpEscrowLiquidity).
+      const shortfallUsdc = row.amount + reserveThresholdUsdc - treasuryBalanceUsdc;
+      const topUp = await topUpEscrowLiquidity({
+        amountUsdc: shortfallUsdc,
+        sourceChain: liquidity.sourceChain,
+        sourceAddress: liquidity.sourceAddress,
+        treasuryWalletId: walletId,
+        treasuryAddress: walletAddress,
+        escrowAddress,
+      });
+      signals = {
+        ...signals,
+        liquidityTopUpUsdc: shortfallUsdc,
+        liquidityBridgeState: topUp.bridge.state,
+        liquidityBridgeSteps: topUp.bridge.steps,
+        liquidityDepositTx: topUp.depositTransactionId,
+      };
+      reasoning =
+        `${reasoning} Bridged ${shortfallUsdc.toFixed(2)} USDC from ${liquidity.sourceChain} via CCTP ` +
+        `and deposited it into the escrow (deposit tx: ${topUp.depositTransactionId}). Will settle on ` +
+        `the next evaluation pass now that the balance covers it.`;
     }
 
     const decisionRow: NewAgentDecisionRow = {

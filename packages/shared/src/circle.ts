@@ -86,6 +86,52 @@ export async function settleObligationOnChain(params: {
   return { transactionId };
 }
 
+/**
+ * Approves the escrow to pull `amountUsdc`, then deposits it — the same two
+ * Circle contract-execution transactions documented in the README's manual
+ * setup step (and scripts/fund-escrow.ts), extracted here so the agent can
+ * run them itself after a cross-chain liquidity top-up lands in the treasury
+ * wallet. Waits for the approve to land before depositing, since the ERC-20
+ * allowance isn't set yet when the deposit call would otherwise execute.
+ */
+export async function depositToEscrow(params: {
+  walletId: string;
+  escrowAddress: string;
+  amountUsdc: number;
+}): Promise<{ approveTransactionId: string; depositTransactionId: string }> {
+  const circle = getCircleClient();
+  const amountAtomic = String(Math.round(params.amountUsdc * 10 ** ARC_TESTNET.usdcErc20Decimals));
+
+  const approveRes = await circle.createContractExecutionTransaction({
+    walletId: params.walletId,
+    contractAddress: ARC_TESTNET.usdcErc20Address,
+    abiFunctionSignature: "approve(address,uint256)",
+    abiParameters: [params.escrowAddress, amountAtomic],
+    fee: { type: "level", config: { feeLevel: "MEDIUM" } },
+  });
+  const approveTransactionId = approveRes.data?.id;
+  if (!approveTransactionId) {
+    throw new Error("Circle createContractExecutionTransaction (approve) response did not include a transaction id");
+  }
+
+  // The deposit call reverts if the allowance isn't confirmed on-chain yet.
+  await new Promise((resolve) => setTimeout(resolve, 8000));
+
+  const depositRes = await circle.createContractExecutionTransaction({
+    walletId: params.walletId,
+    contractAddress: params.escrowAddress,
+    abiFunctionSignature: "deposit(uint256)",
+    abiParameters: [amountAtomic],
+    fee: { type: "level", config: { feeLevel: "MEDIUM" } },
+  });
+  const depositTransactionId = depositRes.data?.id;
+  if (!depositTransactionId) {
+    throw new Error("Circle createContractExecutionTransaction (deposit) response did not include a transaction id");
+  }
+
+  return { approveTransactionId, depositTransactionId };
+}
+
 const notificationPublicKeyCache = new Map<string, KeyObject>();
 
 /**

@@ -19,7 +19,7 @@ Built for the [Build on Arc](https://arc.io) hackathon — DeFi + Agentic Econom
 | Dashboard/API | Next.js (App Router) + Supabase | Mirrors Circle's own `arc-fintech` reference app |
 | Agent | Node.js/TypeScript service (`apps/agent`) | Runs independently of the dashboard — autonomy means it isn't human-triggered |
 | Wallets | `@circle-fin/developer-controlled-wallets` | Circle's real, self-serve wallet SDK |
-| Cross-chain liquidity | `@circle-fin/app-kit` (Bridge Kit) + Circle Gateway | `kit.bridge()` / `kit.estimateBridge()` |
+| Cross-chain liquidity | `@circle-fin/app-kit` (Bridge Kit) via `@circle-fin/adapter-circle-wallets` | `kit.bridge()` signs through the same Circle-custodied wallets the rest of the app uses — no private key held for either side of the bridge |
 | Nanopayments | `@circle-fin/x402-batching` (x402 protocol) | Real, self-serve, has a working Circle reference impl (`arc-nanopayments`) |
 | FX conversion | StableFX (gated — see below) | Behind an adapter interface until access is granted |
 | Contracts | Hardhat 3 + viem | Foundry's native Windows install path was too much friction for solo/4-week scope |
@@ -84,11 +84,22 @@ Core spine is real end-to-end, no mock data anywhere in the path:
   doesn't execute a conversion — that's still blocked on StableFX (see below) — it
   proves the agent-pays-for-a-service nanopayment flow end-to-end.
 
+- **Cross-chain liquidity top-up**: when settling an obligation would drop the escrow
+  balance below the reserve floor, the agent no longer just flags it — `packages/shared/src/liquidity.ts`
+  bridges exactly the shortfall from a second Circle-custodied wallet on Base Sepolia into
+  the Arc treasury wallet via Bridge Kit's `kit.bridge()` (real CCTP, both legs signed
+  through `@circle-fin/adapter-circle-wallets` — no private key held for either wallet),
+  then deposits the bridged USDC into `ObligationEscrow` (approve + deposit, same two
+  Circle contract-execution transactions the manual setup step below documents). The
+  obligation itself settles on the *next* evaluation pass, once the balance reflects the
+  top-up — bridging plus a fast-mode CCTP attestation can run long enough that forcing it
+  into the same pass isn't worth the complexity. Requires `LIQUIDITY_WALLET_ID`/
+  `LIQUIDITY_WALLET_ADDRESS` to be set (see Setup); without them, `request_liquidity`
+  falls back to the old flag-only behavior.
+
 Known gaps, tracked rather than faked:
 - **StableFX** is gated (RFQ access, no self-serve signup) — non-USDC obligations are
   correctly flagged `convert_currency` by the decision engine but not yet settled.
-- **Cross-chain liquidity top-up (CCTP/Bridge Kit)** isn't wired in yet — obligations
-  that would breach the reserve floor are flagged `request_liquidity` but not acted on.
 
 ## Setup
 
@@ -114,14 +125,25 @@ Known gaps, tracked rather than faked:
     `ORACLE_SELLER_ADDRESS` (no key needed — it only receives payments). Fund the
     x402 key with native gas + USDC via the faucet, then run
     `tsx scripts/deposit-gateway.ts <amount>` once to fund its Circle Gateway balance.
-11. `npm run dev:oracle` — starts the rate oracle at `localhost:4000`.
-12. `npm run dev:web` — dashboard at `localhost:3000`.
-13. `npm run dev:agent` — runs one evaluation pass over pending obligations.
+11. `npm run setup:liquidity-wallet` — creates the cross-chain liquidity wallet on Base
+    Sepolia and prints `LIQUIDITY_WALLET_ID` / `LIQUIDITY_WALLET_ADDRESS` to add to
+    `.env`. Fund it via the [Circle faucet](https://faucet.circle.com) (select Base
+    Sepolia) — it needs **both** testnet ETH (gas for the CCTP burn call) and USDC (the
+    amount to bridge). Confirmed the faucet does not reliably grant both from one request
+    — request each explicitly and check the wallet's native balance before relying on it,
+    since a USDC-only balance makes `kit.bridge()` hang instead of failing (there's a
+    90s timeout guard around it in `liquidity.ts`, but that's a safety net, not a fix).
+    Optional: without this, `request_liquidity` decisions are flagged but not acted on.
+12. `npm run dev:oracle` — starts the rate oracle at `localhost:4000`.
+13. `npm run dev:web` — dashboard at `localhost:3000`.
+14. `npm run dev:agent` — runs one evaluation pass over pending obligations.
 
 ### Deploying (Vercel Cron for autonomous evaluation)
 
 Deploy `apps/web` to Vercel (set its directory as the project root) with all the
-`.env` values above as project env vars, plus a generated `CRON_SECRET`
+`.env` values above as project env vars (including `LIQUIDITY_WALLET_ID`/
+`LIQUIDITY_WALLET_ADDRESS` if you want autonomous liquidity top-ups, not just local
+manual runs), plus a generated `CRON_SECRET`
 (`node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`).
 `vercel.json` schedules `GET /api/cron/evaluate` every 15 minutes — check that
 frequency against your actual Vercel plan's cron limits before relying on it.

@@ -16,6 +16,8 @@
     "dev:oracle": "npm run dev -w apps/oracle",
     "presetup:wallet": "npm run build:shared",
     "setup:wallet": "tsx scripts/generate-wallet.ts",
+    "presetup:liquidity-wallet": "npm run build:shared",
+    "setup:liquidity-wallet": "tsx scripts/setup-liquidity-wallet.ts",
     "prebuild": "npm run build:shared",
     "build": "npm run build --workspaces --if-present",
     "pretest": "npm run build:shared",

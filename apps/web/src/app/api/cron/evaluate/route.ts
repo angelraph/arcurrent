@@ -1,3 +1,4 @@
+import { BridgeChain } from "@circle-fin/app-kit";
 import { evaluatePendingObligations } from "@arcurrent/shared";
 import { NextResponse } from "next/server";
 
@@ -23,10 +24,11 @@ export async function GET(request: Request) {
   }
 
   const walletId = process.env.TREASURY_WALLET_ID;
+  const walletAddress = process.env.TREASURY_WALLET_ADDRESS;
   const escrowAddress = process.env.OBLIGATION_ESCROW_ADDRESS as `0x${string}` | undefined;
-  if (!walletId || !escrowAddress) {
+  if (!walletId || !walletAddress || !escrowAddress) {
     return NextResponse.json(
-      { error: "TREASURY_WALLET_ID and OBLIGATION_ESCROW_ADDRESS must be set" },
+      { error: "TREASURY_WALLET_ID, TREASURY_WALLET_ADDRESS, and OBLIGATION_ESCROW_ADDRESS must be set" },
       { status: 500 }
     );
   }
@@ -34,12 +36,18 @@ export async function GET(request: Request) {
   const oracleUrl = process.env.ORACLE_URL;
   const x402Key = process.env.AGENT_X402_PRIVATE_KEY as `0x${string}` | undefined;
 
+  const liquiditySourceAddress = process.env.LIQUIDITY_WALLET_ADDRESS;
+
   const summary = await evaluatePendingObligations({
     walletId,
+    walletAddress,
     escrowAddress,
     reserveThresholdUsdc: Number(process.env.TREASURY_RESERVE_USDC ?? "0"),
     payAheadWindowDays: Number(process.env.AGENT_PAY_AHEAD_WINDOW_DAYS ?? "3"),
     oracle: oracleUrl && x402Key ? { url: oracleUrl, privateKey: x402Key } : undefined,
+    liquidity: liquiditySourceAddress
+      ? { sourceChain: BridgeChain.Base_Sepolia, sourceAddress: liquiditySourceAddress }
+      : undefined,
   });
 
   return NextResponse.json(summary);

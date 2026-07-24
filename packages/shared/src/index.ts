@@ -4,4 +4,5 @@ export * from "./circle.js";
 export * from "./supabase.js";
 export * from "./nanopayments.js";
 export * from "./decide.js";
+export * from "./liquidity.js";
 export * from "./evaluate.js";

@@ -11,7 +11,7 @@
   "dependencies": {
     "@arcurrent/shared": "*",
     "@circle-fin/developer-controlled-wallets": "^10.8.0",
-    "@circle-fin/app-kit": "^1.9.0",
+    "@circle-fin/app-kit": "^1.10.0",
     "@circle-fin/x402-batching": "^3.2.0",
     "@supabase/supabase-js": "^2.45.0",
     "next": "16.2.10",
