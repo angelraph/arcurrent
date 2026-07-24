@@ -233,13 +233,23 @@
 
   .balance-strip {
     display: flex;
-    align-items: center;
-    gap: 14px;
-    font-size: 0.95rem;
-    flex-wrap: wrap;
+    flex-direction: column;
+    gap: 10px;
   }
-  .balance-strip .figure { font-size: 1.4rem; font-weight: 600; }
-  .balance-strip .arrow { color: var(--ink-soft); }
+  .balance-strip .step {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .balance-strip .step.move {
+    flex-direction: row;
+    align-items: center;
+    gap: 8px;
+    padding-left: 2px;
+  }
+  .balance-strip .figure { font-size: clamp(1.1rem, 3vw, 1.4rem); font-weight: 600; }
+  .balance-strip .arrow { color: var(--ink-soft); font-size: 0.85rem; }
+  .balance-strip .step.move .arrow { color: var(--copper); }
   .balance-strip .figure.hi { color: var(--signal); }
 
   ul.plain { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 14px; }
@@ -309,18 +319,18 @@
   <p>Nothing here is simulated. Every figure on the next slide is a real transaction hash, not a mock.</p>
 </div>
 
-<div class="slide" id="s4" style="max-width: 900px;">
+<div class="slide" id="s4">
   <span class="slide-index">04 / 10</span>
   <span class="eyebrow">Proof</span>
   <h1>One evaluation pass, four real transactions.</h1>
   <p>Obligation: $5.00 USDC, due 2026&#8209;07&#8209;24. Reserve floor: $15.00.</p>
 
   <div class="balance-strip">
-    <span class="figure">$15.999994</span>
-    <span class="arrow">&rarr; request_liquidity &rarr;</span>
-    <span class="figure hi">$20.00</span>
-    <span class="arrow">&rarr; pay_now &rarr;</span>
-    <span class="figure">$15.00</span>
+    <div class="step"><span class="figure">$15.999994</span><span class="arrow">escrow balance &mdash; paying now would break the $15.00 floor</span></div>
+    <div class="step move"><span class="arrow">&darr; bridges in $4.00 USDC from Base Sepolia</span></div>
+    <div class="step"><span class="figure hi">$20.00</span><span class="arrow">escrow balance after the top-up</span></div>
+    <div class="step move"><span class="arrow">&darr; settles the $5.00 obligation</span></div>
+    <div class="step"><span class="figure">$15.00</span><span class="arrow">reserve floor, exactly</span></div>
   </div>
 
   <div class="ledger">
