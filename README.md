@@ -11,6 +11,8 @@ loop, settling in USDC on Arc.
 
 Built for the [Build on Arc](https://arc.io) hackathon — DeFi + Agentic Economy tracks.
 
+Live dashboard: https://arcurrent-web.vercel.app
+
 ## Stack
 
 | Layer | Choice | Why |
