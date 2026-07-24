@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 const KITS = [
   {
     name: "Developer-Controlled Wallets",
@@ -58,7 +60,7 @@ export function Explainer() {
             <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-accent-soft text-xs font-semibold text-accent">
               1
             </span>
-            Add an obligation below: a vendor, an amount, a due date, USDC or EURC.
+            Open the dashboard and add an obligation: a vendor, an amount, a due date, USDC or EURC.
           </li>
           <li className="flex gap-3">
             <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-accent-soft text-xs font-semibold text-accent">
@@ -76,6 +78,12 @@ export function Explainer() {
             simulated.
           </li>
         </ol>
+        <Link
+          href="/dashboard"
+          className="mt-2 w-fit rounded-lg bg-accent px-5 py-2.5 text-sm font-semibold text-accent-foreground shadow-sm transition hover:opacity-90"
+        >
+          Open the dashboard →
+        </Link>
       </div>
     </section>
   );

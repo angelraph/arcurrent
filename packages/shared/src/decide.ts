@@ -60,8 +60,8 @@ export function decide(input: DecisionInput): DecisionResult {
       action: "request_liquidity",
       reasoning:
         `Paying now would drop the balance to $${balanceAfterPayment.toFixed(2)}, below ` +
-        `the $${reserveThresholdUsdc.toFixed(2)} reserve floor. Would need a cross-chain ` +
-        `liquidity top-up before settling; that path isn't wired in yet.`,
+        `the $${reserveThresholdUsdc.toFixed(2)} reserve floor. Needs a cross-chain ` +
+        `liquidity top-up before settling.`,
       signals,
     };
   }

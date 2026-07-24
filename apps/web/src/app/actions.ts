@@ -36,6 +36,6 @@ export async function createObligation(
 
   if (error) return { error: error.message };
 
-  revalidatePath("/");
+  revalidatePath("/dashboard");
   return {};
 }

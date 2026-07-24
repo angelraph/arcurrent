@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 export function Hero() {
   return (
     <section
@@ -13,16 +15,16 @@ export function Hero() {
         </h1>
         <p className="max-w-xl text-base leading-relaxed text-muted sm:text-lg">
           Arcurrent watches what you owe, decides when it&apos;s safe to pay from real signals, and
-          settles in USDC without anyone clicking approve. This isn&apos;t a demo. Every transaction
-          below is real, on Arc Testnet, and anyone can verify it.
+          settles in USDC without anyone clicking approve. This isn&apos;t a demo. Every transaction is
+          real, on Arc Testnet, and anyone can verify it.
         </p>
         <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
-          <a
-            href="#dashboard"
+          <Link
+            href="/dashboard"
             className="rounded-lg bg-accent px-5 py-2.5 text-sm font-semibold text-accent-foreground shadow-sm transition hover:opacity-90"
           >
-            Open the dashboard ↓
-          </a>
+            Open the dashboard →
+          </Link>
           <a
             href="https://github.com/angelraph/arcurrent"
             target="_blank"
