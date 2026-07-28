@@ -6,7 +6,7 @@ const DECK_HTML = `
   <div class="orbit orbit-1"></div>
   <div class="orbit orbit-2"></div>
   <canvas id="trace"></canvas>
-  <span class="eyebrow">Build on Arc — Checkpoint 3</span>
+  <span class="eyebrow">Build on Arc · Checkpoint 3</span>
   <div class="logo-card"><img src="/arcurrent-logo.jpg" alt="Arcurrent" /></div>
   <p class="lede">An autonomous treasury agent that pays your company's bills, and proves every decision on-chain.</p>
   <div class="footer-row" style="justify-content:center;">
@@ -109,7 +109,7 @@ const DECK_HTML = `
     </div>
   </div>
   <p class="lede" style="margin-top: 24px;">
-    This is the pattern Circle's Agent Stack formalizes &mdash; wallets, an onchain program, cross-chain
+    This is the pattern Circle's Agent Stack formalizes: wallets, an onchain program, cross-chain
     liquidity and a machine-payable service, wired into one loop. Built directly against those primitives
     rather than a starter kit, since the loop itself is the product.
   </p>
