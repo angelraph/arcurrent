@@ -108,6 +108,11 @@ const DECK_HTML = `
       <p>The agent pays a sub-cent fee for the live FX rate it needs before acting on a foreign bill.</p>
     </div>
   </div>
+  <p class="lede" style="margin-top: 24px;">
+    This is the pattern Circle's Agent Stack formalizes &mdash; wallets, an onchain program, cross-chain
+    liquidity and a machine-payable service, wired into one loop. Built directly against those primitives
+    rather than a starter kit, since the loop itself is the product.
+  </p>
 </div>
 
 <div class="slide" id="s6">
