@@ -193,6 +193,9 @@ const DECK_HTML = `
     <a class="plain mono" href="/dashboard">Open the live dashboard &rarr;</a>
   </div>
   <div class="footer-row" style="justify-content:center;">
+    <a class="plain mono" href="/faucet">Get testnet funds and try it yourself &rarr;</a>
+  </div>
+  <div class="footer-row" style="justify-content:center;">
     <a class="plain mono" href="https://github.com/angelraph/arcurrent" target="_blank" rel="noreferrer">github.com/angelraph/arcurrent</a>
   </div>
 </div>
