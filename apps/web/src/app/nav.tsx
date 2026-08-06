@@ -19,6 +19,9 @@ export function Nav() {
             <Link href="/dashboard" className="transition hover:text-foreground">
               Dashboard
             </Link>
+            <Link href="/faucet" className="transition hover:text-foreground">
+              Testnet faucet
+            </Link>
           </nav>
         </div>
         <span className="rounded-full border border-border px-2.5 py-1 text-xs font-medium text-muted">
