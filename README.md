@@ -147,8 +147,10 @@ Deploy `apps/web` to Vercel (set its directory as the project root) with all the
 `LIQUIDITY_WALLET_ADDRESS` if you want autonomous liquidity top-ups, not just local
 manual runs), plus a generated `CRON_SECRET`
 (`node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`).
-`vercel.json` schedules `GET /api/cron/evaluate` every 15 minutes — check that
-frequency against your actual Vercel plan's cron limits before relying on it.
+`vercel.json` schedules `GET /api/cron/evaluate` once daily (`0 6 * * *`) — the
+Hobby plan caps cron jobs at once per day, so this runs as often as that plan
+allows. On a Pro plan or higher you can raise the frequency in `vercel.json`.
 Without this, the agent only evaluates obligations when someone runs
-`npm run dev:agent`/`start` manually; with it, settlement genuinely runs with no
-human in the loop.
+`npm run dev:agent`/`start` manually, or when the dashboard's "Add obligation"
+form triggers an immediate pass; with it, settlement genuinely runs with no
+human in the loop, just once a day rather than continuously.

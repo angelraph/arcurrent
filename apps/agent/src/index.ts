@@ -2,7 +2,7 @@ import { config } from "dotenv";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { BridgeChain } from "@circle-fin/app-kit";
-import { evaluatePendingObligations } from "@arcurrent/shared";
+import { evaluatePendingObligations, requireEnvNumber } from "@arcurrent/shared";
 
 // Monorepo root .env — dotenv/config alone loads from this workspace's own
 // directory (apps/agent), not the workspace root where the shared .env lives.
@@ -32,19 +32,21 @@ async function main() {
     walletId,
     walletAddress,
     escrowAddress,
-    reserveThresholdUsdc: Number(process.env.TREASURY_RESERVE_USDC ?? "0"),
-    payAheadWindowDays: Number(process.env.AGENT_PAY_AHEAD_WINDOW_DAYS ?? "3"),
+    reserveThresholdUsdc: requireEnvNumber(process.env.TREASURY_RESERVE_USDC, "TREASURY_RESERVE_USDC"),
+    payAheadWindowDays: requireEnvNumber(process.env.AGENT_PAY_AHEAD_WINDOW_DAYS, "AGENT_PAY_AHEAD_WINDOW_DAYS"),
     oracle: oracleUrl && x402Key ? { url: oracleUrl, privateKey: x402Key } : undefined,
     liquidity: liquiditySourceAddress
       ? { sourceChain: BridgeChain.Base_Sepolia, sourceAddress: liquiditySourceAddress }
       : undefined,
   });
 
-  console.log(
-    summary.evaluated === 0
-      ? "No pending obligations."
-      : `Evaluated ${summary.evaluated} obligation(s): ${JSON.stringify(summary.actions)}`
-  );
+  if (summary.evaluated === 0 && summary.failed === 0) {
+    console.log("No pending obligations.");
+  } else {
+    const parts = [`Evaluated ${summary.evaluated} obligation(s): ${JSON.stringify(summary.actions)}`];
+    if (summary.failed > 0) parts.push(`${summary.failed} failed evaluation (see errors above, will retry).`);
+    console.log(parts.join(" "));
+  }
 }
 
 main().catch((err) => {

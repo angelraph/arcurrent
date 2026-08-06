@@ -131,7 +131,17 @@ export async function depositToEscrow(params: {
   }
 
   // The deposit call reverts if the allowance isn't confirmed on-chain yet.
-  await new Promise((resolve) => setTimeout(resolve, 8000));
+  // Poll Circle's own transaction status for the approve to actually reach
+  // CONFIRMED, rather than a fixed sleep -- 8s was a guess against Arc's
+  // confirmation time and could race under RPC slowness (the same condition
+  // the fallback transport further up this file exists to survive). Bounded
+  // to 30s; if it hasn't confirmed by then, fail loud instead of depositing
+  // against an allowance that might not be set yet.
+  await circle.getTransaction({
+    id: approveTransactionId,
+    waitForState: "CONFIRMED",
+    signal: AbortSignal.timeout(30_000),
+  });
 
   const depositRes = await circle.createContractExecutionTransaction({
     walletId: params.walletId,

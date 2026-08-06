@@ -1,5 +1,5 @@
 import { BridgeChain } from "@circle-fin/app-kit";
-import type { EvaluateConfig } from "@arcurrent/shared";
+import { requireEnvNumber, type EvaluateConfig } from "@arcurrent/shared";
 
 /**
  * Builds the evaluatePendingObligations() config from env vars — shared
@@ -18,12 +18,21 @@ export function getEvaluateConfigFromEnv(): EvaluateConfig | { error: string } {
   const x402Key = process.env.AGENT_X402_PRIVATE_KEY as `0x${string}` | undefined;
   const liquiditySourceAddress = process.env.LIQUIDITY_WALLET_ADDRESS;
 
+  let reserveThresholdUsdc: number;
+  let payAheadWindowDays: number;
+  try {
+    reserveThresholdUsdc = requireEnvNumber(process.env.TREASURY_RESERVE_USDC, "TREASURY_RESERVE_USDC");
+    payAheadWindowDays = requireEnvNumber(process.env.AGENT_PAY_AHEAD_WINDOW_DAYS, "AGENT_PAY_AHEAD_WINDOW_DAYS");
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : String(err) };
+  }
+
   return {
     walletId,
     walletAddress,
     escrowAddress,
-    reserveThresholdUsdc: Number(process.env.TREASURY_RESERVE_USDC ?? "0"),
-    payAheadWindowDays: Number(process.env.AGENT_PAY_AHEAD_WINDOW_DAYS ?? "3"),
+    reserveThresholdUsdc,
+    payAheadWindowDays,
     oracle: oracleUrl && x402Key ? { url: oracleUrl, privateKey: x402Key } : undefined,
     liquidity: liquiditySourceAddress
       ? { sourceChain: BridgeChain.Base_Sepolia, sourceAddress: liquiditySourceAddress }

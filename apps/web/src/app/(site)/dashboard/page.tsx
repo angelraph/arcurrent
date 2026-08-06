@@ -1,4 +1,4 @@
-import { getObligations, getRecentDecisions, getTreasuryBalance } from "@/lib/data";
+import { getObligations, getRecentDecisions, getTreasuryBalance, type TreasuryBalances } from "@/lib/data";
 import { formatUsdc } from "@/lib/format";
 import { Nav } from "../../nav";
 import { ObligationForm } from "../../obligation-form";
@@ -11,12 +11,24 @@ export const dynamic = "force-dynamic";
 // cron route.
 export const maxDuration = 60;
 
+const emptyBalance: TreasuryBalances = { escrowUsdc: null, walletUsdc: null };
+
 export default async function DashboardPage() {
-  const [balance, obligations, decisions] = await Promise.all([
+  // Promise.allSettled, not Promise.all: a real transient failure in one
+  // panel's data (RPC blip, Circle rate limit, Supabase hiccup) shouldn't
+  // blank the entire live dashboard. Each panel degrades independently below.
+  const [balanceResult, obligationsResult, decisionsResult] = await Promise.allSettled([
     getTreasuryBalance(),
     getObligations(),
     getRecentDecisions(),
   ]);
+
+  const balance = balanceResult.status === "fulfilled" ? balanceResult.value : emptyBalance;
+  const balanceUnavailable = balanceResult.status === "rejected";
+  const obligations = obligationsResult.status === "fulfilled" ? obligationsResult.value : [];
+  const obligationsUnavailable = obligationsResult.status === "rejected";
+  const decisions = decisionsResult.status === "fulfilled" ? decisionsResult.value : [];
+  const decisionsUnavailable = decisionsResult.status === "rejected";
 
   const decisionsByObligation = new Map<string, typeof decisions>();
   for (const decision of decisions) {
@@ -41,7 +53,9 @@ export default async function DashboardPage() {
             <h2 className="text-xs font-semibold uppercase tracking-wide text-muted">
               Escrow balance <span className="normal-case text-muted">(spendable)</span>
             </h2>
-            {balance.escrowUsdc === null ? (
+            {balanceUnavailable ? (
+              <p className="mt-2 text-sm text-warning">Balance temporarily unavailable. Try refreshing.</p>
+            ) : balance.escrowUsdc === null ? (
               <p className="mt-2 text-sm text-warning">
                 Not configured. Deploy <code className="rounded bg-warning-soft px-1.5 py-0.5 font-mono text-xs">ObligationEscrow</code> and set OBLIGATION_ESCROW_ADDRESS.
               </p>
@@ -55,7 +69,9 @@ export default async function DashboardPage() {
             <h2 className="text-xs font-semibold uppercase tracking-wide text-muted">
               Treasury wallet <span className="normal-case text-muted">(undeposited)</span>
             </h2>
-            {balance.walletUsdc === null ? (
+            {balanceUnavailable ? (
+              <p className="mt-2 text-sm text-warning">Balance temporarily unavailable. Try refreshing.</p>
+            ) : balance.walletUsdc === null ? (
               <p className="mt-2 text-sm text-warning">
                 Not configured. Run <code className="rounded bg-warning-soft px-1.5 py-0.5 font-mono text-xs">npm run setup:wallet</code> and set TREASURY_WALLET_ID.
               </p>
@@ -74,7 +90,11 @@ export default async function DashboardPage() {
 
         <section className="flex flex-col gap-3">
           <h2 className="text-sm font-semibold uppercase tracking-wide text-muted">Obligations</h2>
-          {obligations.length === 0 ? (
+          {obligationsUnavailable ? (
+            <p className="rounded-xl border border-dashed border-warning p-6 text-center text-sm text-warning">
+              Obligations temporarily unavailable. Try refreshing.
+            </p>
+          ) : obligations.length === 0 ? (
             <p className="rounded-xl border border-dashed border-border p-6 text-center text-sm text-muted">
               None yet. Add one above.
             </p>
@@ -133,7 +153,11 @@ export default async function DashboardPage() {
 
         <section className="flex flex-col gap-3 pb-8">
           <h2 className="text-sm font-semibold uppercase tracking-wide text-muted">Agent decision log</h2>
-          {decisions.length === 0 ? (
+          {decisionsUnavailable ? (
+            <p className="rounded-xl border border-dashed border-warning p-6 text-center text-sm text-warning">
+              Decision log temporarily unavailable. Try refreshing.
+            </p>
+          ) : decisions.length === 0 ? (
             <p className="rounded-xl border border-dashed border-border p-6 text-center text-sm text-muted">
               The agent hasn&apos;t run yet.
             </p>

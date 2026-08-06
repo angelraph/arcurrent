@@ -33,13 +33,24 @@ const gateway = createGatewayMiddleware({
  * README) is what would actually execute a conversion.
  */
 app.get("/rate", gateway.require("$0.001"), async (_req, res) => {
-  const upstream = await fetch("https://api.frankfurter.dev/v1/latest?base=EUR&symbols=USD");
-  if (!upstream.ok) {
-    res.status(502).json({ error: `Upstream rate provider returned ${upstream.status}` });
-    return;
+  // Express 4 doesn't catch a rejected promise from an async handler on its
+  // own — an unhandled rejection here (DNS failure, timeout, network blip)
+  // would otherwise just hang the request until the client gives up, right
+  // in the middle of the agent's paid x402 call. Catch and time-box it.
+  try {
+    const upstream = await fetch("https://api.frankfurter.dev/v1/latest?base=EUR&symbols=USD", {
+      signal: AbortSignal.timeout(5000),
+    });
+    if (!upstream.ok) {
+      res.status(502).json({ error: `Upstream rate provider returned ${upstream.status}` });
+      return;
+    }
+    const body = (await upstream.json()) as { date: string; rates: { USD: number } };
+    res.json({ pair: "EURUSD", rate: body.rates.USD, asOf: body.date, source: "api.frankfurter.dev" });
+  } catch (err) {
+    console.error("Rate lookup failed:", err);
+    res.status(502).json({ error: "Rate provider unreachable" });
   }
-  const body = (await upstream.json()) as { date: string; rates: { USD: number } };
-  res.json({ pair: "EURUSD", rate: body.rates.USD, asOf: body.date, source: "api.frankfurter.dev" });
 });
 
 // Vercel's Node runtime imports this module as a request handler — it does

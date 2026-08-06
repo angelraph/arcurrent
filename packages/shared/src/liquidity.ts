@@ -30,7 +30,12 @@ export interface LiquidityTopUpResult {
   depositTransactionId: string;
 }
 
-const BRIDGE_TIMEOUT_MS = 90_000;
+// Both callers (the cron route and the dashboard's server action) run under
+// Vercel Hobby's 60s function ceiling, which cannot be raised without a paid
+// plan. Kept comfortably under that so the request can still finish and
+// return a clean response, rather than getting SIGKILLed mid-bridge with no
+// decision row written.
+const BRIDGE_TIMEOUT_MS = 45_000;
 
 /**
  * kit.bridge() has no built-in timeout — observed hanging indefinitely

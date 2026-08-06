@@ -6,6 +6,7 @@ import { getEvaluateConfigFromEnv } from "@/lib/evaluate-config";
 
 export interface CreateObligationState {
   error?: string;
+  warning?: string;
 }
 
 export async function createObligation(
@@ -44,7 +45,16 @@ export async function createObligation(
   // obligation itself — it just falls back to waiting for the next cron run.
   const config = getEvaluateConfigFromEnv();
   if (!("error" in config)) {
-    await evaluatePendingObligations(config);
+    try {
+      await evaluatePendingObligations(config);
+    } catch (err) {
+      // The obligation is already saved above — a transient failure here
+      // (Circle API, RPC, oracle) shouldn't surface as a broken form. Log it
+      // and let the next scheduled run pick it up instead.
+      console.error("Post-save evaluation failed:", err);
+      revalidatePath("/dashboard");
+      return { warning: "Obligation saved. Evaluation will retry on the next scheduled run." };
+    }
   }
 
   revalidatePath("/dashboard");

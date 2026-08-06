@@ -45,6 +45,7 @@ export function ObligationForm() {
         />
       </label>
       {state.error && <p className="col-span-2 text-sm text-danger">{state.error}</p>}
+      {state.warning && <p className="col-span-2 text-sm text-warning">{state.warning}</p>}
       <button
         type="submit"
         disabled={pending}
