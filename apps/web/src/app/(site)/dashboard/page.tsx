@@ -9,6 +9,7 @@ import { formatUsdc } from "@/lib/format";
 import { Nav } from "../../nav";
 import { ObligationForm } from "../../obligation-form";
 import { DecisionPill, StatusPill } from "../../status-pill";
+import { TopUpEscrowButton } from "../../topup-escrow-button";
 import { ARC_TESTNET, type AgentDecision } from "@arcurrent/shared";
 
 export const dynamic = "force-dynamic";
@@ -72,6 +73,7 @@ export default async function DashboardPage() {
                 ${formatUsdc(balance.escrowUsdc)} <span className="text-lg font-medium text-muted">USDC</span>
               </p>
             )}
+            {!balanceUnavailable && balance.escrowUsdc !== null && <TopUpEscrowButton />}
           </div>
           <div className="rounded-xl border border-border bg-surface p-5 shadow-sm">
             <h2 className="text-xs font-semibold uppercase tracking-wide text-muted">
