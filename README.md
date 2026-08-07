@@ -168,3 +168,22 @@ Without this, the agent only evaluates obligations when someone runs
 `npm run dev:agent`/`start` manually, or when the dashboard's "Add obligation"
 form triggers an immediate pass; with it, settlement genuinely runs with no
 human in the loop, just once a day rather than continuously.
+
+### Deploying the oracle
+
+`apps/oracle` deploys as its own separate Vercel project (it has its own
+`vercel.json` rewriting all routes to `api/index`). Set `ORACLE_URL` in
+`apps/web`'s project env vars to that deployment's public `/rate` URL.
+
+Real incident, worth knowing: Vercel's per-deployment URLs
+(`<project>-<hash>-<team>.vercel.app`) can sit behind Vercel's own
+Deployment Protection (an SSO login wall) even when the project itself has
+no protection configured for its stable domain. Pointing `ORACLE_URL` at a
+deployment URL instead of the project's stable alias
+(`https://<project>.vercel.app`) silently broke every `convert_currency`
+evaluation for this project between initial deploy and 2026-08-07, every
+attempt got redirected into the SSO wall and failed with a confusing 404,
+not an auth error, and the per-obligation try/catch (see Status) meant it
+failed quietly instead of loudly. Always use the stable alias, and confirm
+with `curl <url>/rate` that it returns `402 Payment Required` (the correct
+x402 response), not a redirect, before trusting it in `ORACLE_URL`.
