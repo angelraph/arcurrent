@@ -1,5 +1,6 @@
 import { ARC_TESTNET } from "@arcurrent/shared";
 import { Nav } from "../../nav";
+import { CopyAddress } from "../../copy-address";
 
 export const dynamic = "force-dynamic";
 
@@ -13,8 +14,15 @@ export const dynamic = "force-dynamic";
  * permissionless, reCAPTCHA-gated faucet UI instead, by design. Automating
  * around that CAPTCHA to fake a one-click in-app drip isn't something this
  * app does; this page exists to make the real thing easy to find.
+ *
+ * Circle's faucet form doesn't support pre-filling the address via a URL
+ * param (confirmed: typing an address there doesn't touch window.location),
+ * so the best we can do is make copying *our own* configured wallet address
+ * a one-click affair instead of a trip through .env.
  */
 export default function FaucetPage() {
+  const treasuryAddress = process.env.TREASURY_WALLET_ADDRESS;
+
   return (
     <div className="flex flex-1 flex-col">
       <Nav />
@@ -30,6 +38,10 @@ export default function FaucetPage() {
           </p>
         </div>
 
+        {treasuryAddress && (
+          <CopyAddress label="Your treasury wallet (Arc Testnet)" address={treasuryAddress} />
+        )}
+
         <a
           href={ARC_TESTNET.faucet}
           target="_blank"
@@ -40,8 +52,11 @@ export default function FaucetPage() {
         </a>
 
         <p className="text-xs text-muted">
-          It&apos;ll ask for a wallet address and send testnet USDC straight to it, Arc Testnet is
-          already selected by default. Rate-limited by Circle, one request per address every 2 hours.
+          {treasuryAddress
+            ? "Copy the address above, click through, paste it into the “Send to” field."
+            : "It’ll ask for a wallet address and send testnet USDC straight to it."}{" "}
+          Arc Testnet is already selected by default there. Rate-limited by Circle, one request per
+          address every 2 hours.
         </p>
       </div>
     </div>
