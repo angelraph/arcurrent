@@ -59,4 +59,30 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
+  position: relative;
+}
+
+/* Warm gradient glow layered behind the top of every page, added on top of
+   the existing --background color, not replacing it. Fixed height and a
+   transparent final stop so it reads as a hero-area accent and fades into
+   the normal background before reaching page content further down, keeping
+   card/surface contrast untouched everywhere it matters. */
+body::before {
+  content: "";
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 520px;
+  z-index: -1;
+  pointer-events: none;
+  background: linear-gradient(
+    to bottom,
+    #6a1841 0%,
+    #a62f4b 30%,
+    #d85a35 60%,
+    #f39a36 82%,
+    transparent 100%
+  );
+  opacity: 0.55;
 }

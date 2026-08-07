@@ -180,7 +180,7 @@ export default async function DashboardPage() {
                   <p className="mt-2 text-foreground">{d.reasoning}</p>
                   {d.txHash && /^0x[a-fA-F0-9]+$/.test(d.txHash) ? (
                     <a
-                      className="mt-2 inline-block font-mono text-xs text-accent hover:underline"
+                      className="mt-2 block break-all font-mono text-xs text-accent hover:underline"
                       href={`${ARC_TESTNET.blockExplorer}/tx/${d.txHash}`}
                       target="_blank"
                       rel="noreferrer"
