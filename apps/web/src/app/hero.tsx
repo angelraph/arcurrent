@@ -6,14 +6,14 @@ export function Hero() {
       className="border-b border-border px-6 py-20 text-center sm:py-28"
       style={{ background: "linear-gradient(to bottom, var(--accent-soft), var(--background))" }}
     >
-      <div className="mx-auto flex max-w-3xl flex-col items-center gap-6">
-        <span className="rounded-full bg-surface px-3 py-1 text-xs font-semibold uppercase tracking-wide text-accent shadow-sm">
+      <div className="mx-auto flex max-w-3xl flex-col items-center gap-6" style={{ textShadow: "0 1px 4px rgba(0,0,0,0.35)" }}>
+        <span className="rounded-full bg-surface px-3 py-1 text-xs font-semibold uppercase tracking-wide text-accent shadow-sm" style={{ textShadow: "none" }}>
           Autonomous treasury agent on Arc
         </span>
         <h1 className="text-4xl font-semibold tracking-tight sm:text-5xl">
           An agent that pays your company&apos;s bills and proves every decision on-chain.
         </h1>
-        <p className="max-w-xl text-base leading-relaxed text-muted sm:text-lg">
+        <p className="max-w-xl text-base leading-relaxed text-foreground sm:text-lg">
           Arcurrent watches what you owe, decides when it&apos;s safe to pay from real signals, and
           settles in USDC without anyone clicking approve. This isn&apos;t a demo. Every transaction is
           real, on Arc Testnet, and anyone can verify it.

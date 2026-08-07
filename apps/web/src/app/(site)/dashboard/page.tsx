@@ -50,10 +50,10 @@ export default async function DashboardPage() {
       <Nav />
 
       <div className="mx-auto flex w-full max-w-4xl flex-col gap-10 px-6 py-12">
-        <div className="flex flex-col gap-1">
+        <div className="flex flex-col gap-1" style={{ textShadow: "0 1px 4px rgba(0,0,0,0.35)" }}>
           <span className="text-xs font-semibold uppercase tracking-wide text-accent">Live dashboard</span>
           <h2 className="text-2xl font-semibold tracking-tight">Treasury &amp; obligations</h2>
-          <p className="text-sm text-muted">Real balances, real obligations, real agent decisions, all on Arc Testnet.</p>
+          <p className="text-sm text-foreground/80">Real balances, real obligations, real agent decisions, all on Arc Testnet.</p>
         </div>
 
         <section className="grid grid-cols-1 gap-4 sm:grid-cols-2">

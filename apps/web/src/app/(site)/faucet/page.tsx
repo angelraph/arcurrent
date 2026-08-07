@@ -28,10 +28,10 @@ export default function FaucetPage() {
       <Nav />
 
       <div className="mx-auto flex w-full max-w-2xl flex-col gap-6 px-6 py-12">
-        <div className="flex flex-col gap-1">
+        <div className="flex flex-col gap-1" style={{ textShadow: "0 1px 4px rgba(0,0,0,0.35)" }}>
           <span className="text-xs font-semibold uppercase tracking-wide text-accent">Testnet faucet</span>
           <h2 className="text-2xl font-semibold tracking-tight">Get Arc Testnet funds</h2>
-          <p className="text-sm text-muted">
+          <p className="text-sm text-foreground/80">
             Arc Testnet&apos;s native gas token is USDC itself, so a single faucet request covers
             both gas and app funds. Circle runs the actual faucet, public, free, no account needed,
             we just point you at it.

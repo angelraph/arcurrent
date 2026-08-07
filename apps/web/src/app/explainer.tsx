@@ -26,9 +26,9 @@ const KITS = [
 export function Explainer() {
   return (
     <section className="mx-auto flex w-full max-w-4xl flex-col gap-8 px-6 py-16 sm:py-20">
-      <div className="flex flex-col gap-2">
+      <div className="flex flex-col gap-2" style={{ textShadow: "0 1px 4px rgba(0,0,0,0.3)" }}>
         <h3 className="text-sm font-semibold text-foreground">Why does this need a blockchain?</h3>
-        <p className="max-w-2xl text-sm leading-relaxed text-muted">
+        <p className="max-w-2xl text-sm leading-relaxed text-foreground">
           A normal payments API needs a human, or a trusted middleman, to authorize every transfer.
           Arcurrent can&apos;t work that way. The whole point is that it decides and acts on its own, on
           a schedule, with no one watching. That only works if the money it moves lives somewhere it can
