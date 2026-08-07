@@ -47,6 +47,7 @@ const DECK_HTML = `
   <span class="slide-index">04 / 12</span>
   <span class="eyebrow">Proof</span>
   <h1>One evaluation pass, four real transactions.</h1>
+  <p class="cap" style="margin: 0;">Illustrative pass, captured once, not a live counter. Current balances are on the live dashboard.</p>
   <p>Obligation: $5.00 USDC, due 2026&#8209;07&#8209;24. Reserve floor: $15.00.</p>
 
   <div class="balance-strip">
