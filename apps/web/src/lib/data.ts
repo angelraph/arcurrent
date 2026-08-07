@@ -52,6 +52,36 @@ export async function getRecentDecisions(limit = 20): Promise<AgentDecision[]> {
   return (data as DecisionRow[]).map(toDecision);
 }
 
+/**
+ * One decision per obligation: whichever is most recent for that obligation,
+ * regardless of how it ranks in the global recent-decisions feed. The
+ * obligations table's "Latest decision" column used to be derived from
+ * getRecentDecisions()'s limited window, so an obligation could silently
+ * flip to "not yet evaluated" once enough newer decisions (for *other*
+ * obligations) pushed its real decision out of that window, even though it
+ * was correctly evaluated and settled. postgrest-js has no DISTINCT ON, so
+ * this fetches decisions.length rows aren't bounded by the feed's limit,
+ * bounded to a generous cap instead, and reduces to one-per-obligation in
+ * JS. Fine at this project's scale; revisit with a DB view if that changes.
+ */
+export async function getLatestDecisionByObligation(): Promise<Map<string, AgentDecision>> {
+  const supabase = getSupabaseServerClient();
+  const { data, error } = await supabase
+    .from("agent_decisions")
+    .select("*")
+    .order("created_at", { ascending: false })
+    .limit(500);
+  if (error) throw error;
+
+  const latest = new Map<string, AgentDecision>();
+  for (const row of data as DecisionRow[]) {
+    if (!latest.has(row.obligation_id)) {
+      latest.set(row.obligation_id, toDecision(row));
+    }
+  }
+  return latest;
+}
+
 export interface TreasuryBalances {
   /** What the agent can actually pay obligations from right now. */
   escrowUsdc: number | null;

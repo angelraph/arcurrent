@@ -1,9 +1,15 @@
-import { getObligations, getRecentDecisions, getTreasuryBalance, type TreasuryBalances } from "@/lib/data";
+import {
+  getLatestDecisionByObligation,
+  getObligations,
+  getRecentDecisions,
+  getTreasuryBalance,
+  type TreasuryBalances,
+} from "@/lib/data";
 import { formatUsdc } from "@/lib/format";
 import { Nav } from "../../nav";
 import { ObligationForm } from "../../obligation-form";
 import { DecisionPill, StatusPill } from "../../status-pill";
-import { ARC_TESTNET } from "@arcurrent/shared";
+import { ARC_TESTNET, type AgentDecision } from "@arcurrent/shared";
 
 export const dynamic = "force-dynamic";
 // Adding an obligation triggers a real evaluation pass (see actions.ts) --
@@ -17,10 +23,11 @@ export default async function DashboardPage() {
   // Promise.allSettled, not Promise.all: a real transient failure in one
   // panel's data (RPC blip, Circle rate limit, Supabase hiccup) shouldn't
   // blank the entire live dashboard. Each panel degrades independently below.
-  const [balanceResult, obligationsResult, decisionsResult] = await Promise.allSettled([
+  const [balanceResult, obligationsResult, decisionsResult, latestDecisionsResult] = await Promise.allSettled([
     getTreasuryBalance(),
     getObligations(),
     getRecentDecisions(),
+    getLatestDecisionByObligation(),
   ]);
 
   const balance = balanceResult.status === "fulfilled" ? balanceResult.value : emptyBalance;
@@ -29,13 +36,14 @@ export default async function DashboardPage() {
   const obligationsUnavailable = obligationsResult.status === "rejected";
   const decisions = decisionsResult.status === "fulfilled" ? decisionsResult.value : [];
   const decisionsUnavailable = decisionsResult.status === "rejected";
-
-  const decisionsByObligation = new Map<string, typeof decisions>();
-  for (const decision of decisions) {
-    const list = decisionsByObligation.get(decision.obligationId) ?? [];
-    list.push(decision);
-    decisionsByObligation.set(decision.obligationId, list);
-  }
+  // Separate from the decision-log feed above (which is intentionally
+  // limited to the most recent 20) -- this is a per-obligation lookup, not
+  // windowed by recency, so an older obligation's "latest decision" doesn't
+  // disappear just because newer obligations logged more decisions since.
+  // Falls back to an empty map on failure, same "not yet evaluated" state
+  // as if it genuinely hadn't run, not a scarier error.
+  const latestDecisionByObligation =
+    latestDecisionsResult.status === "fulfilled" ? latestDecisionsResult.value : new Map<string, AgentDecision>();
 
   return (
     <div className="flex flex-1 flex-col">
@@ -113,7 +121,7 @@ export default async function DashboardPage() {
                 </thead>
                 <tbody>
                   {obligations.map((o) => {
-                    const latest = decisionsByObligation.get(o.id)?.[0];
+                    const latest = latestDecisionByObligation.get(o.id);
                     return (
                       <tr key={o.id} className="border-b border-border last:border-0">
                         <td className="px-4 py-3 font-medium">{o.vendorName}</td>
