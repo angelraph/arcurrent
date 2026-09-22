@@ -1,7 +1,8 @@
 import type { BridgeChain } from "@circle-fin/app-kit";
 import { decide } from "./decide.js";
-import { getEscrowUsdcBalance, settleObligationOnChain } from "./circle.js";
-import { topUpEscrowLiquidity } from "./liquidity.js";
+import { getTreasuryUsdcBalance } from "./circle.js";
+import { settleObligationViaMandate } from "./mandate.js";
+import { topUpTreasuryLiquidity } from "./liquidity.js";
 import { payForFxRate } from "./nanopayments.js";
 import { getSupabaseServerClient } from "./supabase.js";
 import { toObligation, type NewAgentDecisionRow, type ObligationRow } from "./types.js";
@@ -9,7 +10,14 @@ import { toObligation, type NewAgentDecisionRow, type ObligationRow } from "./ty
 export interface EvaluateConfig {
   walletId: string;
   walletAddress: string;
-  escrowAddress: `0x${string}`;
+  /**
+   * MandateEscrow, not ObligationEscrow: pay_now settles by creating and
+   * releasing a mandate (see settleObligationViaMandate in mandate.ts),
+   * pulling directly from the treasury wallet's own USDC balance rather
+   * than a separate pre-funded escrow pool. ObligationEscrow is still
+   * deployed and tested but is no longer in this live settlement path.
+   */
+  mandateEscrowAddress: `0x${string}`;
   reserveThresholdUsdc: number;
   payAheadWindowDays: number;
   /** Omit to skip the nanopayment rate consultation on convert_currency obligations. */
@@ -17,8 +25,8 @@ export interface EvaluateConfig {
   /**
    * Omit to leave request_liquidity as a flag-only decision (no top-up
    * attempted). When set, a request_liquidity decision triggers a real CCTP
-   * bridge from this Circle-custodied wallet into the treasury, followed by
-   * an escrow deposit — see topUpEscrowLiquidity in liquidity.ts.
+   * bridge from this Circle-custodied wallet into the treasury wallet — see
+   * topUpTreasuryLiquidity in liquidity.ts.
    */
   liquidity?: { sourceChain: BridgeChain; sourceAddress: string };
 }
@@ -47,7 +55,7 @@ export function wasClaimed(rows: unknown[] | null): boolean {
  * the Vercel Cron route (apps/web) so there's exactly one implementation.
  */
 export async function evaluatePendingObligations(config: EvaluateConfig): Promise<EvaluateSummary> {
-  const { walletId, walletAddress, escrowAddress, reserveThresholdUsdc, payAheadWindowDays, oracle, liquidity } =
+  const { walletId, walletAddress, mandateEscrowAddress, reserveThresholdUsdc, payAheadWindowDays, oracle, liquidity } =
     config;
   const supabase = getSupabaseServerClient();
 
@@ -71,7 +79,10 @@ export async function evaluatePendingObligations(config: EvaluateConfig): Promis
     // log why, and move on to the next one.
     let result: ReturnType<typeof decide> | undefined;
     try {
-      const treasuryBalanceUsdc = await getEscrowUsdcBalance(escrowAddress);
+      // The treasury wallet's own USDC balance, not a separate escrow pool —
+      // pay_now settles via MandateEscrow, which pulls directly from this
+      // wallet per mandate (see settleObligationViaMandate below).
+      const treasuryBalanceUsdc = await getTreasuryUsdcBalance(walletId);
 
       result = decide({
         obligation: row,
@@ -105,15 +116,18 @@ export async function evaluatePendingObligations(config: EvaluateConfig): Promis
           continue;
         }
 
+        let mandateId: string | undefined;
         try {
-          const { transactionId } = await settleObligationOnChain({
+          const result = await settleObligationViaMandate({
             walletId,
-            escrowAddress,
+            ownerAddress: walletAddress as `0x${string}`,
+            mandateEscrowAddress,
             obligationId: row.id,
             destinationAddress: row.destinationAddress,
             amountUsdc: row.amount,
           });
-          txHash = transactionId;
+          txHash = result.transactionId;
+          mandateId = result.mandateId;
         } catch (err) {
           // The claim succeeded but nothing was actually submitted on-chain,
           // so it's safe to release the claim for the next pass to retry
@@ -135,8 +149,8 @@ export async function evaluatePendingObligations(config: EvaluateConfig): Promis
         const payNowDecisionRow: NewAgentDecisionRow = {
           obligation_id: row.id,
           action: result.action,
-          reasoning,
-          signals,
+          reasoning: mandateId ? `${reasoning} Settled via MandateEscrow (mandate #${mandateId}).` : reasoning,
+          signals: mandateId ? { ...signals, mandateId } : signals,
           tx_hash: txHash ?? null,
         };
         await supabase.from("agent_decisions").insert(payNowDecisionRow);
@@ -163,31 +177,28 @@ export async function evaluatePendingObligations(config: EvaluateConfig): Promis
       } else if (result.action === "request_liquidity" && liquidity) {
         // Bridge exactly the shortfall — enough to cover this obligation while
         // keeping the reserve floor intact. Settling from the topped-up balance
-        // is left to the next evaluation pass (see topUpEscrowLiquidity). A
+        // is left to the next evaluation pass (see topUpTreasuryLiquidity). A
         // failure here (including a bridge timeout, see BRIDGE_TIMEOUT_MS in
         // liquidity.ts) is handled by the catch below, same as any other
         // action -- no bespoke handling needed now that every action shares
         // one per-obligation catch.
         const shortfallUsdc = row.amount + reserveThresholdUsdc - treasuryBalanceUsdc;
-        const topUp = await topUpEscrowLiquidity({
+        const topUp = await topUpTreasuryLiquidity({
           amountUsdc: shortfallUsdc,
           sourceChain: liquidity.sourceChain,
           sourceAddress: liquidity.sourceAddress,
-          treasuryWalletId: walletId,
           treasuryAddress: walletAddress,
-          escrowAddress,
         });
         signals = {
           ...signals,
           liquidityTopUpUsdc: shortfallUsdc,
           liquidityBridgeState: topUp.bridge.state,
           liquidityBridgeSteps: topUp.bridge.steps,
-          liquidityDepositTx: topUp.depositTransactionId,
         };
         reasoning =
-          `${reasoning} Bridged ${shortfallUsdc.toFixed(2)} USDC from ${liquidity.sourceChain} via CCTP ` +
-          `and deposited it into the escrow (deposit tx: ${topUp.depositTransactionId}). Will settle on ` +
-          `the next evaluation pass now that the balance covers it.`;
+          `${reasoning} Bridged ${shortfallUsdc.toFixed(2)} USDC from ${liquidity.sourceChain} via CCTP into ` +
+          `the treasury wallet. Will settle via MandateEscrow on the next evaluation pass now that the ` +
+          `balance covers it.`;
       }
 
       const decisionRow: NewAgentDecisionRow = {

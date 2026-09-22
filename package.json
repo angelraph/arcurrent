@@ -18,6 +18,8 @@
     "setup:wallet": "tsx scripts/generate-wallet.ts",
     "presetup:liquidity-wallet": "npm run build:shared",
     "setup:liquidity-wallet": "tsx scripts/setup-liquidity-wallet.ts",
+    "premandate:demo": "npm run build:shared",
+    "mandate:demo": "tsx scripts/mandate-demo.ts",
     "prebuild": "npm run build:shared",
     "build": "npm run build --workspaces --if-present",
     "pretest": "npm run build:shared",

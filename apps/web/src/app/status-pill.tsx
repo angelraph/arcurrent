@@ -13,6 +13,13 @@ const DECISION_STYLES: Record<string, string> = {
   insufficient_funds: "bg-danger-soft text-danger",
 };
 
+const MANDATE_STYLES: Record<string, string> = {
+  Funded: "bg-accent-soft text-accent",
+  Fulfilled: "bg-warning-soft text-warning",
+  Released: "bg-success-soft text-success",
+  Refunded: "bg-danger-soft text-danger",
+};
+
 function Pill({ label, className }: { label: string; className: string }) {
   return (
     <span
@@ -29,4 +36,8 @@ export function StatusPill({ status }: { status: string }) {
 
 export function DecisionPill({ action }: { action: string }) {
   return <Pill label={action} className={DECISION_STYLES[action] ?? "bg-border text-muted"} />;
+}
+
+export function MandateStatusPill({ status }: { status: string }) {
+  return <Pill label={status} className={MANDATE_STYLES[status] ?? "bg-border text-muted"} />;
 }

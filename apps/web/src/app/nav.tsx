@@ -1,7 +1,8 @@
 import Link from "next/link";
-import { ARC_TESTNET } from "@arcurrent/shared";
+import { getActiveArcNetwork } from "@arcurrent/shared";
 
 export function Nav() {
+  const network = getActiveArcNetwork();
   return (
     <header className="border-b border-border bg-surface px-6 py-4">
       <div className="mx-auto flex w-full max-w-5xl flex-wrap items-center justify-between gap-3">
@@ -22,13 +23,15 @@ export function Nav() {
             <Link href="/dashboard" className="transition hover:text-foreground">
               Dashboard
             </Link>
-            <Link href="/faucet" className="transition hover:text-foreground">
-              Testnet faucet
-            </Link>
+            {network.faucet && (
+              <Link href="/faucet" className="transition hover:text-foreground">
+                Testnet faucet
+              </Link>
+            )}
           </nav>
         </div>
         <span className="rounded-full border border-border px-2.5 py-1 text-xs font-medium text-muted">
-          Arc Testnet · chain {ARC_TESTNET.chainId}
+          {network.name} · chain {network.chainId}
         </span>
       </div>
     </header>

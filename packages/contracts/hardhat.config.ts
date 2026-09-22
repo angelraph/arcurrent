@@ -34,5 +34,11 @@ export default defineConfig({
       url: configVariable("ARC_TESTNET_RPC_URL"),
       accounts: [configVariable("ARC_TESTNET_DEPLOYER_PRIVATE_KEY")],
     },
+    arcMainnet: {
+      type: "http",
+      chainType: "l1",
+      url: configVariable("ARC_MAINNET_RPC_URL"),
+      accounts: [configVariable("ARC_MAINNET_DEPLOYER_PRIVATE_KEY")],
+    },
   },
 });

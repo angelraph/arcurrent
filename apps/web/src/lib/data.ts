@@ -1,10 +1,14 @@
 import "server-only";
 import {
   getEscrowUsdcBalance,
+  getMandateReputation,
+  getMandates,
   getSupabaseServerClient,
   getTreasuryUsdcBalance,
   toObligation,
   type AgentDecision,
+  type Mandate,
+  type MandateReputation,
   type Obligation,
   type ObligationRow,
 } from "@arcurrent/shared";
@@ -104,4 +108,27 @@ export async function getTreasuryBalance(): Promise<TreasuryBalances> {
   ]);
 
   return { walletUsdc, escrowUsdc };
+}
+
+export interface MandateWithReputation extends Mandate {
+  fulfillerReputation: MandateReputation | null;
+}
+
+/**
+ * Pure on-chain read, unlike getObligations() above — MandateEscrow has no
+ * Supabase table, since it's meant to be an open primitive any address can
+ * call directly, not just this project's own agent. Empty array (not a
+ * fabricated list) when MANDATE_ESCROW_ADDRESS isn't configured yet, same
+ * "honest not-set-up state" convention as getTreasuryBalance().
+ */
+export async function getMandatesWithReputation(): Promise<MandateWithReputation[]> {
+  const escrowAddress = process.env.MANDATE_ESCROW_ADDRESS as `0x${string}` | undefined;
+  if (!escrowAddress) return [];
+
+  const mandates = await getMandates(escrowAddress);
+  const reputations = await Promise.all(
+    mandates.map((m) => getMandateReputation(escrowAddress, m.fulfiller))
+  );
+
+  return mandates.map((m, i) => ({ ...m, fulfillerReputation: reputations[i] }));
 }

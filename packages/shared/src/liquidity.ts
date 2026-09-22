@@ -1,6 +1,5 @@
 import { createCircleWalletsAdapter, type CircleWalletsAdapter } from "@circle-fin/adapter-circle-wallets";
 import { AppKit, BridgeChain, type BridgeResult } from "@circle-fin/app-kit";
-import { depositToEscrow } from "./circle.js";
 
 let adapter: CircleWalletsAdapter | null = null;
 
@@ -26,8 +25,6 @@ function getCircleWalletsAdapter(): CircleWalletsAdapter {
 
 export interface LiquidityTopUpResult {
   bridge: BridgeResult;
-  approveTransactionId: string;
-  depositTransactionId: string;
 }
 
 // Both callers (the cron route and the dashboard's server action) run under
@@ -57,19 +54,23 @@ function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise
 /**
  * Moves `amountUsdc` from a Circle-custodied liquidity wallet on another
  * CCTP-supported testnet chain into the Arc treasury wallet via
- * Circle's Cross-Chain Transfer Protocol (kit.bridge(), @circle-fin/app-kit),
- * then deposits the bridged funds into ObligationEscrow so the agent can
- * settle from it. Called when decide() returns `request_liquidity` — paying
- * the obligation itself is left to the next evaluation pass, since CCTP
- * attestation can take longer than a single cron invocation should block on.
+ * Circle's Cross-Chain Transfer Protocol (kit.bridge(), @circle-fin/app-kit).
+ * Called when decide() returns `request_liquidity` — paying the obligation
+ * itself is left to the next evaluation pass, since CCTP attestation can
+ * take longer than a single cron invocation should block on.
+ *
+ * Used to also deposit the bridged funds into ObligationEscrow's pre-funded
+ * pool afterward. Since settlement now goes through MandateEscrow (see
+ * settleObligationViaMandate in mandate.ts), which pulls USDC directly from
+ * the treasury wallet's own balance per mandate rather than a pre-funded
+ * pool, landing the bridged funds in the treasury wallet is the whole job —
+ * there's no separate pool left to deposit into.
  */
-export async function topUpEscrowLiquidity(params: {
+export async function topUpTreasuryLiquidity(params: {
   amountUsdc: number;
   sourceChain: BridgeChain;
   sourceAddress: string;
-  treasuryWalletId: string;
   treasuryAddress: string;
-  escrowAddress: string;
 }): Promise<LiquidityTopUpResult> {
   const walletsAdapter = getCircleWalletsAdapter();
   const kit = new AppKit();
@@ -86,17 +87,8 @@ export async function topUpEscrowLiquidity(params: {
   );
 
   if (bridge.state !== "success") {
-    throw new Error(
-      `Bridge did not complete (state: ${bridge.state}); not depositing into escrow. Steps: ` +
-        JSON.stringify(bridge.steps)
-    );
+    throw new Error(`Bridge did not complete (state: ${bridge.state}). Steps: ${JSON.stringify(bridge.steps)}`);
   }
 
-  const { approveTransactionId, depositTransactionId } = await depositToEscrow({
-    walletId: params.treasuryWalletId,
-    escrowAddress: params.escrowAddress,
-    amountUsdc: params.amountUsdc,
-  });
-
-  return { bridge, approveTransactionId, depositTransactionId };
+  return { bridge };
 }

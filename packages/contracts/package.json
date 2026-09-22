@@ -7,7 +7,10 @@
     "compile": "hardhat compile",
     "test": "hardhat test",
     "deploy:arc-testnet": "hardhat ignition deploy ignition/modules/Counter.ts --network arcTestnet",
-    "deploy:obligation-escrow": "hardhat ignition deploy ignition/modules/ObligationEscrow.ts --network arcTestnet"
+    "deploy:obligation-escrow": "hardhat ignition deploy ignition/modules/ObligationEscrow.ts --network arcTestnet",
+    "deploy:mandate-escrow": "hardhat ignition deploy ignition/modules/MandateEscrow.ts --network arcTestnet",
+    "deploy:obligation-escrow:mainnet": "hardhat ignition deploy ignition/modules/ObligationEscrow.ts --network arcMainnet",
+    "deploy:mandate-escrow:mainnet": "hardhat ignition deploy ignition/modules/MandateEscrow.ts --network arcMainnet"
   },
   "devDependencies": {
     "@nomicfoundation/hardhat-ignition": "^3.1.8",

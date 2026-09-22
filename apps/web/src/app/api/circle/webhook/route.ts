@@ -8,7 +8,12 @@ import { NextResponse } from "next/server";
 /**
  * Receives Circle transaction webhooks and moves an obligation from
  * "scheduled" to "settled"/"failed" once the onchain transaction confirms.
- * `refId` on the transaction is the obligation id (set in settleObligationOnChain).
+ * `refId` on the transaction is the obligation id — set on MandateEscrow's
+ * release() call in settleObligationViaMandate (the live settlement path)
+ * and, for the legacy ObligationEscrow rail, in settleObligationOnChain.
+ * Deliberately NOT set on settleObligationViaMandate's earlier createMandate
+ * call, so that transaction confirming can't mark the obligation "settled"
+ * before release() actually pays it.
  *
  * Every request is verified against `X-Circle-Signature` (ECDSA-SHA256,
  * base64) using the public key for `X-Circle-Key-Id`, fetched from
@@ -61,8 +66,8 @@ export async function POST(request: Request) {
     const supabase = getSupabaseServerClient();
     await supabase.from("obligations").update({ status: nextStatus }).eq("id", refId);
     // txHash only exists once the transaction actually lands on-chain — not
-    // at submission time, when settleObligationOnChain could only store
-    // Circle's own transaction id. This is the one place the real hash
+    // at submission time, when the settlement call could only store Circle's
+    // own transaction id. This is the one place the real hash
     // becomes available, so swap it in (matched on that same Circle id,
     // not obligation_id, so this can't touch an unrelated decision row for
     // the same obligation) so the explorer link actually resolves.

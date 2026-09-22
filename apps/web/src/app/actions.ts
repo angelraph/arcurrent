@@ -139,12 +139,22 @@ export interface TopUpEscrowState {
 // Public, self-service "add funds to escrow" action for the dashboard --
 // lets a judge or tester who drains the escrow while testing top it back up
 // without needing the project owner to run scripts/fund-escrow.ts by hand.
+// Tops up ObligationEscrow specifically, the original pre-funded-pool
+// contract -- kept live as a reference/legacy rail even though real
+// settlement now goes through MandateEscrow (see evaluate.ts), which pulls
+// straight from the treasury wallet's own balance and has no pool to top up.
+// Reads its own env vars rather than going through getEvaluateConfigFromEnv(),
+// since that now requires MANDATE_ESCROW_ADDRESS, which this action doesn't
+// need and shouldn't be blocked by.
 export async function topUpEscrow(
   _prevState: TopUpEscrowState,
   _formData: FormData
 ): Promise<TopUpEscrowState> {
-  const config = getEvaluateConfigFromEnv();
-  if ("error" in config) return { error: config.error };
+  const walletId = process.env.TREASURY_WALLET_ID;
+  const escrowAddress = process.env.OBLIGATION_ESCROW_ADDRESS;
+  if (!walletId || !escrowAddress) {
+    return { error: "TREASURY_WALLET_ID and OBLIGATION_ESCROW_ADDRESS must be set." };
+  }
 
   const supabase = getSupabaseServerClient();
   const ip = await getClientIp();
@@ -170,7 +180,7 @@ export async function topUpEscrow(
 
   let treasuryBalance: number;
   try {
-    treasuryBalance = await getTreasuryUsdcBalance(config.walletId);
+    treasuryBalance = await getTreasuryUsdcBalance(walletId);
   } catch (err) {
     console.error("Escrow top-up treasury balance check failed:", err);
     return { error: "Couldn't read the treasury balance right now. Try again in a moment." };
@@ -185,8 +195,8 @@ export async function topUpEscrow(
 
   try {
     await depositToEscrow({
-      walletId: config.walletId,
-      escrowAddress: config.escrowAddress,
+      walletId,
+      escrowAddress,
       amountUsdc: TOPUP_AMOUNT_USDC,
     });
   } catch (err) {

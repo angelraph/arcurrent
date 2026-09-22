@@ -3,19 +3,23 @@ import {
   type CircleDeveloperControlledWalletsClient,
 } from "@circle-fin/developer-controlled-wallets";
 import { createPublicKey, createVerify, type KeyObject } from "node:crypto";
-import { createPublicClient, fallback, http, parseAbi } from "viem";
-import { ARC_TESTNET } from "./chain.js";
+import { createPublicClient, fallback, http, parseAbi, type PublicClient } from "viem";
+import { getActiveArcNetwork } from "./chain.js";
 
-// Arc Testnet's default public RPC rate-limits under moderate load (seen in
-// production: "request limit reached" on eth_call during a burst of
-// webhook + balance-read activity). Falls back across the other publicly
-// documented endpoints instead of hard-failing the whole page.
-const arcPublicClient = createPublicClient({
+const activeNetwork = getActiveArcNetwork();
+
+// Arc's default public RPC rate-limits under moderate load (seen in
+// production on testnet: "request limit reached" on eth_call during a burst
+// of webhook + balance-read activity; a third-party report suggests mainnet's
+// public endpoint load-balances across backends with inconsistent chain
+// heads too — see the caveat in chain.ts). Falls back across the other
+// publicly documented endpoints instead of hard-failing the whole page.
+export const arcPublicClient: PublicClient = createPublicClient({
   transport: fallback([
-    http(ARC_TESTNET.rpcUrls.default),
-    http(ARC_TESTNET.rpcUrls.blockdaemon),
-    http(ARC_TESTNET.rpcUrls.drpc),
-    http(ARC_TESTNET.rpcUrls.quicknode),
+    http(activeNetwork.rpcUrls.default),
+    http(activeNetwork.rpcUrls.blockdaemon),
+    http(activeNetwork.rpcUrls.drpc),
+    http(activeNetwork.rpcUrls.quicknode),
   ]),
 });
 const erc20BalanceAbi = parseAbi(["function balanceOf(address) view returns (uint256)"]);
@@ -44,7 +48,7 @@ export async function getTreasuryUsdcBalance(walletId: string): Promise<number> 
   const circle = getCircleClient();
   const res = await circle.getWalletTokenBalance({
     id: walletId,
-    tokenAddresses: [ARC_TESTNET.usdcErc20Address],
+    tokenAddresses: [activeNetwork.usdcErc20Address],
   });
   const amount = res.data?.tokenBalances?.[0]?.amount;
   return amount ? Number(amount) : 0;
@@ -58,12 +62,12 @@ export async function getTreasuryUsdcBalance(walletId: string): Promise<number> 
  */
 export async function getEscrowUsdcBalance(escrowAddress: `0x${string}`): Promise<number> {
   const balance = await arcPublicClient.readContract({
-    address: ARC_TESTNET.usdcErc20Address,
+    address: activeNetwork.usdcErc20Address,
     abi: erc20BalanceAbi,
     functionName: "balanceOf",
     args: [escrowAddress],
   });
-  return Number(balance) / 10 ** ARC_TESTNET.usdcErc20Decimals;
+  return Number(balance) / 10 ** activeNetwork.usdcErc20Decimals;
 }
 
 /**
@@ -82,7 +86,7 @@ export async function settleObligationOnChain(params: {
   amountUsdc: number;
 }): Promise<{ transactionId: string }> {
   const circle = getCircleClient();
-  const amountAtomic = String(Math.round(params.amountUsdc * 10 ** ARC_TESTNET.usdcErc20Decimals));
+  const amountAtomic = String(Math.round(params.amountUsdc * 10 ** activeNetwork.usdcErc20Decimals));
   const res = await circle.createContractExecutionTransaction({
     walletId: params.walletId,
     contractAddress: params.escrowAddress,
@@ -116,11 +120,11 @@ export async function depositToEscrow(params: {
   amountUsdc: number;
 }): Promise<{ approveTransactionId: string; depositTransactionId: string }> {
   const circle = getCircleClient();
-  const amountAtomic = String(Math.round(params.amountUsdc * 10 ** ARC_TESTNET.usdcErc20Decimals));
+  const amountAtomic = String(Math.round(params.amountUsdc * 10 ** activeNetwork.usdcErc20Decimals));
 
   const approveRes = await circle.createContractExecutionTransaction({
     walletId: params.walletId,
-    contractAddress: ARC_TESTNET.usdcErc20Address,
+    contractAddress: activeNetwork.usdcErc20Address,
     abiFunctionSignature: "approve(address,uint256)",
     abiParameters: [params.escrowAddress, amountAtomic],
     fee: { type: "level", config: { feeLevel: "MEDIUM" } },

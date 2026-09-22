@@ -7,3 +7,4 @@ export * from "./nanopayments.js";
 export * from "./decide.js";
 export * from "./liquidity.js";
 export * from "./evaluate.js";
+export * from "./mandate.js";

@@ -1,5 +1,6 @@
 import {
   getLatestDecisionByObligation,
+  getMandatesWithReputation,
   getObligations,
   getRecentDecisions,
   getTreasuryBalance,
@@ -8,9 +9,13 @@ import {
 import { formatUsdc } from "@/lib/format";
 import { Nav } from "../../nav";
 import { ObligationForm } from "../../obligation-form";
-import { DecisionPill, StatusPill } from "../../status-pill";
+import { DecisionPill, MandateStatusPill, StatusPill } from "../../status-pill";
 import { TopUpEscrowButton } from "../../topup-escrow-button";
-import { ARC_TESTNET, type AgentDecision } from "@arcurrent/shared";
+import { getActiveArcNetwork, type AgentDecision } from "@arcurrent/shared";
+
+function shortAddress(address: string): string {
+  return `${address.slice(0, 6)}…${address.slice(-4)}`;
+}
 
 export const dynamic = "force-dynamic";
 // Adding an obligation triggers a real evaluation pass (see actions.ts) --
@@ -21,15 +26,18 @@ export const maxDuration = 60;
 const emptyBalance: TreasuryBalances = { escrowUsdc: null, walletUsdc: null };
 
 export default async function DashboardPage() {
+  const network = getActiveArcNetwork();
   // Promise.allSettled, not Promise.all: a real transient failure in one
   // panel's data (RPC blip, Circle rate limit, Supabase hiccup) shouldn't
   // blank the entire live dashboard. Each panel degrades independently below.
-  const [balanceResult, obligationsResult, decisionsResult, latestDecisionsResult] = await Promise.allSettled([
-    getTreasuryBalance(),
-    getObligations(),
-    getRecentDecisions(),
-    getLatestDecisionByObligation(),
-  ]);
+  const [balanceResult, obligationsResult, decisionsResult, latestDecisionsResult, mandatesResult] =
+    await Promise.allSettled([
+      getTreasuryBalance(),
+      getObligations(),
+      getRecentDecisions(),
+      getLatestDecisionByObligation(),
+      getMandatesWithReputation(),
+    ]);
 
   const balance = balanceResult.status === "fulfilled" ? balanceResult.value : emptyBalance;
   const balanceUnavailable = balanceResult.status === "rejected";
@@ -37,6 +45,8 @@ export default async function DashboardPage() {
   const obligationsUnavailable = obligationsResult.status === "rejected";
   const decisions = decisionsResult.status === "fulfilled" ? decisionsResult.value : [];
   const decisionsUnavailable = decisionsResult.status === "rejected";
+  const mandates = mandatesResult.status === "fulfilled" ? mandatesResult.value : [];
+  const mandatesUnavailable = mandatesResult.status === "rejected";
   // Separate from the decision-log feed above (which is intentionally
   // limited to the most recent 20) -- this is a per-obligation lookup, not
   // windowed by recency, so an older obligation's "latest decision" doesn't
@@ -54,30 +64,13 @@ export default async function DashboardPage() {
         <div className="flex flex-col gap-1" style={{ textShadow: "0 1px 4px rgba(0,0,0,0.35)" }}>
           <span className="text-xs font-semibold uppercase tracking-wide text-accent">Live dashboard</span>
           <h2 className="text-2xl font-semibold tracking-tight">Treasury &amp; obligations</h2>
-          <p className="text-sm text-foreground/80">Real balances, real obligations, real agent decisions, all on Arc Testnet.</p>
+          <p className="text-sm text-foreground/80">Real balances, real obligations, real agent decisions, all on {network.name}.</p>
         </div>
 
         <section className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div className="rounded-xl border border-border bg-surface p-5 shadow-sm">
             <h2 className="text-xs font-semibold uppercase tracking-wide text-muted">
-              Escrow balance <span className="normal-case text-muted">(spendable)</span>
-            </h2>
-            {balanceUnavailable ? (
-              <p className="mt-2 text-sm text-warning">Balance temporarily unavailable. Try refreshing.</p>
-            ) : balance.escrowUsdc === null ? (
-              <p className="mt-2 text-sm text-warning">
-                Not configured. Deploy <code className="rounded bg-warning-soft px-1.5 py-0.5 font-mono text-xs">ObligationEscrow</code> and set OBLIGATION_ESCROW_ADDRESS.
-              </p>
-            ) : (
-              <p className="mt-2 font-mono text-3xl font-semibold tracking-tight">
-                ${formatUsdc(balance.escrowUsdc)} <span className="text-lg font-medium text-muted">USDC</span>
-              </p>
-            )}
-            {!balanceUnavailable && balance.escrowUsdc !== null && <TopUpEscrowButton />}
-          </div>
-          <div className="rounded-xl border border-border bg-surface p-5 shadow-sm">
-            <h2 className="text-xs font-semibold uppercase tracking-wide text-muted">
-              Treasury wallet <span className="normal-case text-muted">(undeposited)</span>
+              Treasury wallet <span className="normal-case text-muted">(spendable)</span>
             </h2>
             {balanceUnavailable ? (
               <p className="mt-2 text-sm text-warning">Balance temporarily unavailable. Try refreshing.</p>
@@ -86,10 +79,32 @@ export default async function DashboardPage() {
                 Not configured. Run <code className="rounded bg-warning-soft px-1.5 py-0.5 font-mono text-xs">npm run setup:wallet</code> and set TREASURY_WALLET_ID.
               </p>
             ) : (
-              <p className="mt-2 font-mono text-3xl font-semibold tracking-tight text-muted">
+              <p className="mt-2 font-mono text-3xl font-semibold tracking-tight">
                 ${formatUsdc(balance.walletUsdc)} <span className="text-lg font-medium text-muted">USDC</span>
               </p>
             )}
+            <p className="mt-2 text-xs text-muted">What MandateEscrow pulls from when the agent settles an obligation.</p>
+          </div>
+          <div className="rounded-xl border border-border bg-surface p-5 shadow-sm">
+            <h2 className="text-xs font-semibold uppercase tracking-wide text-muted">
+              ObligationEscrow balance <span className="normal-case text-muted">(legacy rail)</span>
+            </h2>
+            {balanceUnavailable ? (
+              <p className="mt-2 text-sm text-warning">Balance temporarily unavailable. Try refreshing.</p>
+            ) : balance.escrowUsdc === null ? (
+              <p className="mt-2 text-sm text-warning">
+                Not configured. Deploy <code className="rounded bg-warning-soft px-1.5 py-0.5 font-mono text-xs">ObligationEscrow</code> and set OBLIGATION_ESCROW_ADDRESS.
+              </p>
+            ) : (
+              <p className="mt-2 font-mono text-3xl font-semibold tracking-tight text-muted">
+                ${formatUsdc(balance.escrowUsdc)} <span className="text-lg font-medium text-muted">USDC</span>
+              </p>
+            )}
+            {!balanceUnavailable && balance.escrowUsdc !== null && <TopUpEscrowButton />}
+            <p className="mt-2 text-xs text-muted">
+              The original pre-funded pool. Still deployed and real, just no longer in the live settlement path —
+              see Mandates below.
+            </p>
           </div>
         </section>
 
@@ -161,6 +176,80 @@ export default async function DashboardPage() {
           )}
         </section>
 
+        <section className="flex flex-col gap-3">
+          <div className="flex flex-col gap-1">
+            <h2 className="text-sm font-semibold uppercase tracking-wide text-muted">Mandates</h2>
+            <p className="text-xs text-muted">
+              The general settlement primitive — not a side demo. The treasury agent itself is a live funder
+              here: every obligation paid above is created and released as its own mandate on{" "}
+              <code className="rounded bg-border/40 px-1 py-0.5 font-mono">MandateEscrow</code>, the same
+              open contract any other address can fund, fulfill, or read. This list is a live read of
+              on-chain state, not this project&apos;s own bookkeeping.
+            </p>
+          </div>
+          {mandatesUnavailable ? (
+            <p className="rounded-xl border border-dashed border-warning p-6 text-center text-sm text-warning">
+              Mandates temporarily unavailable. Try refreshing.
+            </p>
+          ) : mandates.length === 0 ? (
+            <p className="rounded-xl border border-dashed border-border p-6 text-center text-sm text-muted">
+              None yet. Deploy{" "}
+              <code className="rounded bg-warning-soft px-1.5 py-0.5 font-mono text-xs">MandateEscrow</code>{" "}
+              and set MANDATE_ESCROW_ADDRESS, then create one with{" "}
+              <code className="rounded bg-warning-soft px-1.5 py-0.5 font-mono text-xs">
+                npm run mandate:demo
+              </code>
+              .
+            </p>
+          ) : (
+            <div className="overflow-x-auto rounded-xl border border-border bg-surface shadow-sm">
+              <table className="w-full text-left text-sm">
+                <thead>
+                  <tr className="border-b border-border text-xs uppercase tracking-wide text-muted">
+                    <th className="px-4 py-3 font-medium">#</th>
+                    <th className="px-4 py-3 font-medium">Funder</th>
+                    <th className="px-4 py-3 font-medium">Fulfiller</th>
+                    <th className="px-4 py-3 font-medium">Amount</th>
+                    <th className="px-4 py-3 font-medium">Status</th>
+                    <th className="px-4 py-3 font-medium">Fulfiller reputation</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {mandates.map((m) => (
+                    <tr key={m.id} className="border-b border-border last:border-0">
+                      <td className="px-4 py-3 font-mono text-muted">{m.id}</td>
+                      <td className="px-4 py-3 font-mono" title={m.funder}>
+                        {shortAddress(m.funder)}
+                      </td>
+                      <td className="px-4 py-3 font-mono" title={m.fulfiller}>
+                        {/^0x0+$/.test(m.fulfiller) ? (
+                          <span className="text-muted">open · unclaimed</span>
+                        ) : (
+                          shortAddress(m.fulfiller)
+                        )}
+                      </td>
+                      <td className="px-4 py-3 font-mono">${formatUsdc(m.amountUsdc)}</td>
+                      <td className="px-4 py-3">
+                        <MandateStatusPill status={m.status} />
+                      </td>
+                      <td className="px-4 py-3 text-muted">
+                        {m.fulfillerReputation ? (
+                          <span className="font-mono text-xs">
+                            {m.fulfillerReputation.completed} done · {m.fulfillerReputation.refunded} refunded ·
+                            ${formatUsdc(m.fulfillerReputation.volumeSettledUsdc)} settled
+                          </span>
+                        ) : (
+                          <span className="text-xs">—</span>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </section>
+
         <section className="flex flex-col gap-3 pb-8">
           <h2 className="text-sm font-semibold uppercase tracking-wide text-muted">Agent decision log</h2>
           {decisionsUnavailable ? (
@@ -183,7 +272,7 @@ export default async function DashboardPage() {
                   {d.txHash && /^0x[a-fA-F0-9]+$/.test(d.txHash) ? (
                     <a
                       className="mt-2 block break-all font-mono text-xs text-accent hover:underline"
-                      href={`${ARC_TESTNET.blockExplorer}/tx/${d.txHash}`}
+                      href={`${network.blockExplorer}/tx/${d.txHash}`}
                       target="_blank"
                       rel="noreferrer"
                     >
