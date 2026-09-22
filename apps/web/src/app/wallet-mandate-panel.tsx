@@ -3,7 +3,6 @@
 import { useMemo, useState } from "react";
 import { useAccount, useConnect, useDisconnect, useReadContract, useSwitchChain, useWriteContract } from "wagmi";
 import { waitForTransactionReceipt } from "wagmi/actions";
-import { injected } from "wagmi/connectors";
 import { decodeEventLog, isAddress, keccak256, parseAbi, parseUnits, stringToHex, formatUnits } from "viem";
 import { useRouter } from "next/navigation";
 import { arcMainnet, MANDATE_ESCROW_ADDRESS, USDC_ADDRESS, USDC_DECIMALS, wagmiConfig } from "@/lib/wagmi-config";
@@ -44,35 +43,45 @@ function shortErrorMessage(err: unknown): string {
 
 function ConnectGate({ children }: { children: React.ReactNode }) {
   const { isConnected, chainId } = useAccount();
-  const { connect, isPending, error } = useConnect();
+  const { connect, connectors, isPending, error } = useConnect();
   const { switchChain, isPending: switching, error: switchError } = useSwitchChain();
 
-  const hasInjectedWallet =
-    typeof window !== "undefined" && typeof (window as { ethereum?: unknown }).ethereum !== "undefined";
-
   if (!isConnected) {
-    if (!hasInjectedWallet) {
-      return (
-        <div className="rounded-xl border border-dashed border-border p-6 text-center text-sm text-muted">
-          No browser wallet detected. Install{" "}
-          <a href="https://metamask.io/download/" target="_blank" rel="noreferrer" className="text-accent underline">
-            MetaMask
-          </a>{" "}
-          (or any EIP-1193 wallet extension) to fund your own mandate directly.
-        </div>
-      );
-    }
+    // Deliberately not gated behind a pre-check like `typeof window.ethereum
+    // !== "undefined"` -- that was tried and is a real false-negative trap:
+    // some wallets inject asynchronously (checked too early = wrongly
+    // "not found"), and modern EIP-6963 wallets don't always shim
+    // `window.ethereum` for legacy compat the way MetaMask does, so a wallet
+    // can genuinely be installed and working while that check still says no.
+    // The actual connect() attempt below is the real source of truth; a
+    // missing-provider error surfaces via `error` after a real attempt,
+    // not a guess beforehand.
+    const connector = connectors[0];
     return (
       <div className="flex flex-col items-start gap-2">
         <button
           type="button"
-          onClick={() => connect({ connector: injected() })}
-          disabled={isPending}
+          onClick={() => connector && connect({ connector })}
+          disabled={isPending || !connector}
           className="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground shadow-sm transition hover:opacity-90 disabled:opacity-50"
         >
           {isPending ? "Connecting…" : "Connect wallet"}
         </button>
-        {error && <p className="text-xs text-danger">{shortErrorMessage(error)}</p>}
+        {error && (
+          <p className="text-xs text-danger">
+            {shortErrorMessage(error)}
+            {/no provider|not found/i.test(error.message) && (
+              <>
+                {" "}
+                No wallet extension found —{" "}
+                <a href="https://metamask.io/download/" target="_blank" rel="noreferrer" className="text-accent underline">
+                  install MetaMask
+                </a>{" "}
+                or any EIP-1193 wallet, then reload this page.
+              </>
+            )}
+          </p>
+        )}
       </div>
     );
   }
