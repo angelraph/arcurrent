@@ -8,7 +8,7 @@ const initialState: CreateObligationState = {};
 const inputClass =
   "mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none transition focus:border-accent focus:ring-2 focus:ring-accent-soft";
 
-export function ObligationForm() {
+export function ObligationForm({ networkName }: { networkName: string }) {
   const [state, formAction, pending] = useActionState(createObligation, initialState);
 
   return (
@@ -36,7 +36,7 @@ export function ObligationForm() {
         <input name="dueDate" type="date" required className={inputClass} />
       </label>
       <label className="col-span-2 text-sm font-medium">
-        Destination address (Arc Testnet, 0x...)
+        Destination address ({networkName}, 0x...)
         <input
           name="destinationAddress"
           required

@@ -110,7 +110,7 @@ export default async function DashboardPage() {
 
         <section className="flex flex-col gap-3">
           <h2 className="text-sm font-semibold uppercase tracking-wide text-muted">Add obligation</h2>
-          <ObligationForm />
+          <ObligationForm networkName={network.name} />
         </section>
 
         <section className="flex flex-col gap-3">
