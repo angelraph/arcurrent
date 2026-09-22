@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 
 export const metadata: Metadata = {
   title: "Arcurrent — Pitch Deck",
-  description: "Build on Arc, Checkpoint 3 — the real, on-chain proof behind Arcurrent.",
+  description: "Live on Arc mainnet — the real, on-chain proof behind Arcurrent and MandateEscrow.",
 };
 
 /**

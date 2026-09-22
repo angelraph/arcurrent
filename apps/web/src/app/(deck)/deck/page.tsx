@@ -6,12 +6,12 @@ const DECK_HTML = `
   <div class="orbit orbit-1"></div>
   <div class="orbit orbit-2"></div>
   <canvas id="trace"></canvas>
-  <span class="eyebrow">Build on Arc · Checkpoint 3</span>
+  <span class="eyebrow">Live on Arc Mainnet</span>
   <div class="logo-card"><img src="/arcurrent-logo.jpg" alt="Arcurrent" /></div>
-  <p class="lede">An autonomous treasury agent that pays your company's bills, and proves every decision on-chain.</p>
+  <p class="lede">An open settlement primitive for agents, and the autonomous treasury agent that's already its first live user.</p>
   <div class="footer-row" style="justify-content:center;">
-    <span class="tag">DeFi track</span>
-    <span class="tag">Agentic Economy track</span>
+    <span class="tag">MandateEscrow</span>
+    <span class="tag">Autonomous Agent</span>
   </div>
 </div>
 
@@ -38,53 +38,55 @@ const DECK_HTML = `
   <h1>A ledger-writing machine, not a script with a cron job.</h1>
   <p class="lede">
     Arcurrent reads what's owed, decides from the real treasury balance, the due date, and a reserve
-    floor, and settles in USDC, or bridges in more USDC first if the balance would run short.
+    floor, and settles by creating and releasing a mandate on MandateEscrow, an open primitive any
+    address can fund, fulfill, or read.
   </p>
-  <p>Nothing here is simulated. Every figure on the next slide is a real transaction hash, not a mock.</p>
+  <p>Nothing here is simulated. Every figure on the next slide is a real transaction hash on Arc mainnet, not a mock.</p>
 </div>
 
 <div class="slide" id="s4">
   <span class="slide-index">04 / 12</span>
   <span class="eyebrow">Proof</span>
-  <h1>One evaluation pass, four real transactions.</h1>
-  <p class="cap" style="margin: 0;">Illustrative pass, captured once, not a live counter. Current balances are on the live dashboard.</p>
-  <p>Obligation: $5.00 USDC, due 2026&#8209;07&#8209;24. Reserve floor: $15.00.</p>
+  <h1>Two real settlements, five real transactions, on Arc mainnet.</h1>
+  <p class="cap" style="margin: 0;">Captured 2026&#8209;09&#8209;22, real mainnet USDC. Current counts are on the live dashboard and Mandates table.</p>
+  <p>Two obligations, $0.05 and $0.03 USDC, settled by creating and releasing mandates on MandateEscrow &mdash; not a pre-funded pool, straight from the treasury wallet's own balance.</p>
 
   <div class="balance-strip">
-    <div class="step"><span class="figure">$15.999994</span><span class="arrow">escrow balance: too low to pay without breaking the $15.00 floor</span></div>
-    <div class="step move"><span class="arrow">&darr; bridges in $4.00 USDC from Base Sepolia</span></div>
-    <div class="step"><span class="figure hi">$20.00</span><span class="arrow">escrow balance after the top-up</span></div>
-    <div class="step move"><span class="arrow">&darr; settles the $5.00 obligation</span></div>
-    <div class="step"><span class="figure">$15.00</span><span class="arrow">reserve floor, exactly</span></div>
+    <div class="step"><span class="figure hi">$0.20</span><span class="arrow">treasury wallet balance after funding</span></div>
+    <div class="step move"><span class="arrow">&darr; mandate #0: approve, create, release &mdash; $0.05 to the fulfiller</span></div>
+    <div class="step"><span class="figure">$0.14</span><span class="arrow">balance after mandate #0, gas included</span></div>
+    <div class="step move"><span class="arrow">&darr; mandate #1: create, release &mdash; $0.03 to the fulfiller</span></div>
+    <div class="step"><span class="figure">$0.10</span><span class="arrow">balance after mandate #1, gas included</span></div>
   </div>
 
   <div class="ledger">
     <div class="ledger-row">
       <span class="step">Approve</span>
-      <span class="desc">USDC spend approved on Base Sepolia for the CCTP burn</span>
-      <span class="figure">0xdef5…3c7dd</span>
+      <span class="desc">Treasury wallet approves MandateEscrow to pull USDC (one-time, max allowance)</span>
+      <span class="figure">0x7bde&hellip;3786</span>
     </div>
     <div class="ledger-row">
-      <span class="step">Burn</span>
-      <span class="desc">4.00 USDC burned on Base Sepolia via Circle's App Kit</span>
-      <span class="figure">0xb606…f3dc0</span>
+      <span class="step">Create #0</span>
+      <span class="desc">Mandate #0 created and funded, $0.05, fulfiller set</span>
+      <span class="figure">0xfe7a&hellip;a53e</span>
     </div>
     <div class="ledger-row">
-      <span class="step">Mint</span>
-      <span class="desc">4.00 USDC minted into the treasury wallet on Arc Testnet</span>
-      <span class="figure">0xa6b2…934e6c0</span>
+      <span class="step">Release #0</span>
+      <span class="desc">Mandate #0 released atomically, reputation ledger updated</span>
+      <span class="figure">0xb7fa&hellip;06b9f</span>
     </div>
     <div class="ledger-row">
-      <span class="step">Deposit</span>
-      <span class="desc">Bridged USDC deposited into the ObligationEscrow contract</span>
-      <span class="figure">736d79cd&hellip;80637c</span>
+      <span class="step">Create #1</span>
+      <span class="desc">Mandate #1 created and funded, $0.03, fulfiller set</span>
+      <span class="figure">0x29eb&hellip;3430</span>
     </div>
     <div class="ledger-row">
-      <span class="step">Settle</span>
-      <span class="desc">Obligation paid on the next evaluation pass, reserve floor intact</span>
-      <span class="figure">0x2ec3&hellip;5586fb</span>
+      <span class="step">Release #1</span>
+      <span class="desc">Mandate #1 released; webhook flips the obligation to "settled" within seconds</span>
+      <span class="figure">0x4df8&hellip;42c63</span>
     </div>
   </div>
+  <p class="cap" style="margin: 0;">Fulfiller reputation after both: 2 completed, 0 refunded, $0.08 volume settled &mdash; read live from the contract, not this project's database.</p>
 </div>
 
 <div class="slide" id="s5">
@@ -97,12 +99,12 @@ const DECK_HTML = `
       <p>The treasury and liquidity wallets are Circle-custodied. No private key lives in this codebase.</p>
     </div>
     <div class="card">
-      <h3>ObligationEscrow</h3>
-      <p>A deployed contract on Arc Testnet holds the treasury's USDC; only the agent's wallet can withdraw.</p>
+      <h3>MandateEscrow</h3>
+      <p>A permissionless contract on Arc mainnet: fund a mandate for anyone, prove fulfillment, release atomically, split payouts, refund on deadline. Reputation updates on-chain. Not project-owned &mdash; this agent is just its first live caller.</p>
     </div>
     <div class="card">
       <h3>App Kit &middot; Bridge (CCTP)</h3>
-      <p>Circle's App Kit SDK, <code>kit.bridge()</code>: real cross-chain USDC top-ups when a payment would breach the reserve floor.</p>
+      <p>Circle's App Kit SDK, <code>kit.bridge()</code>: cross-chain USDC top-ups when a payment would breach the reserve floor. Proven on testnet; disabled on mainnet until a Live-environment source wallet is funded.</p>
     </div>
     <div class="card">
       <h3>x402 nanopayments</h3>
@@ -144,23 +146,31 @@ const DECK_HTML = `
   <span class="eyebrow">Status</span>
   <h1>What's real, what's gated.</h1>
   <ul class="plain" style="max-width: 640px;">
-    <li><span class="status-pill ok">real</span><span class="v">Wallets, escrow contract, CCTP bridge, x402 nanopayments, autonomous cron, webhook-confirmed settlement</span></li>
-    <li><span class="status-pill gap">gated</span><span class="v">StableFX: RFQ-only access, no self-serve signup yet. Non-USDC obligations are correctly flagged, not yet auto-settled.</span></li>
+    <li><span class="status-pill ok">real</span><span class="v">Live on Arc mainnet: Circle Live-environment wallets, MandateEscrow, x402 nanopayments, autonomous cron, webhook-confirmed settlement end to end</span></li>
+    <li><span class="status-pill gap">gated</span><span class="v">StableFX: RFQ-only access, no self-serve signup yet. Non-USDC obligations are correctly flagged, not yet auto-settled. CCTP liquidity top-up currently disabled on mainnet pending a funded source chain.</span></li>
   </ul>
 </div>
 
 <div class="slide" id="s9">
   <span class="slide-index">09 / 12</span>
-  <span class="eyebrow">Track fit</span>
-  <h1>Two tracks, one agent.</h1>
+  <span class="eyebrow">Fit</span>
+  <h1>A primitive, not another single-purpose demo.</h1>
   <div class="grid-2">
     <div class="card">
-      <h3>DeFi</h3>
-      <p>Programmable treasury, cross-chain liquidity sourcing, USDC-denominated fees end to end.</p>
+      <h3>Relevance to Arc</h3>
+      <p>Impossible on a chain with volatile gas or probabilistic finality: USDC-native gas and sub-second settlement are what make per-obligation mandates economical at all.</p>
     </div>
     <div class="card">
-      <h3>Agentic Economy</h3>
-      <p>Real autonomy: the agent decides, pays for its own inputs, and settles without a human in the loop.</p>
+      <h3>Technical credibility</h3>
+      <p>Real contracts, real mainnet deployment, a real autonomous caller &mdash; not a testnet-only illustration.</p>
+    </div>
+    <div class="card">
+      <h3>Depth</h3>
+      <p>Solves trust and accountability, atomic multi-party settlement, and portable reputation in one primitive, rather than one narrow feature.</p>
+    </div>
+    <div class="card">
+      <h3>Promise</h3>
+      <p>Open by design: any other agent or hackathon builder can fund, fulfill, or read a mandate today, no permission needed.</p>
     </div>
   </div>
 </div>
@@ -168,10 +178,10 @@ const DECK_HTML = `
 <div class="slide" id="s10">
   <span class="slide-index">10 / 12</span>
   <span class="eyebrow">What's next</span>
-  <h1>Where the accelerator runway goes.</h1>
+  <h1>Where this goes from here.</h1>
+  <div class="kv-line"><span class="k">Other callers</span><span class="v">MandateEscrow is open today; the next real proof is a second, unrelated agent funding or fulfilling a mandate</span></div>
   <div class="kv-line"><span class="k">StableFX</span><span class="v">Auto-settle non-USDC obligations once access lands</span></div>
-  <div class="kv-line"><span class="k">App Kit</span><span class="v">Today it's Bridge. Swap and Unified Balance are the same SDK, next.</span></div>
-  <div class="kv-line"><span class="k">Liquidity</span><span class="v">More source chains beyond Base Sepolia</span></div>
+  <div class="kv-line"><span class="k">Liquidity</span><span class="v">A funded mainnet-side source chain, re-enabling the CCTP top-up path</span></div>
   <div class="kv-line"><span class="k">Pilot</span><span class="v">A real company's treasury, not a test wallet</span></div>
 </div>
 
@@ -180,9 +190,9 @@ const DECK_HTML = `
   <span class="eyebrow">The ask</span>
   <h1>What we're looking for.</h1>
   <div class="ask-list">
-    <div class="ask-item"><span class="mark">01</span><div><h3>A place in Arc's accelerator</h3><p>Eight weeks to take this from a hackathon build to something a real treasury team could actually run.</p></div></div>
+    <div class="ask-item"><span class="mark">01</span><div><h3>The microgrant</h3><p>Non-dilutive fuel to keep building the primitive out, not just the agent on top of it.</p></div></div>
     <div class="ask-item"><span class="mark">02</span><div><h3>StableFX access</h3><p>The one piece that's flagged, not faked. This closes the last gap between "correctly identifies" and "fully autonomous."</p></div></div>
-    <div class="ask-item"><span class="mark">03</span><div><h3>An introduction to a real treasury</h3><p>Not another test wallet. A team with genuine recurring cross-border USDC obligations to pilot against.</p></div></div>
+    <div class="ask-item"><span class="mark">03</span><div><h3>Introductions</h3><p>To a real treasury with genuine recurring obligations to pilot against, and to other Arc builders whose agents could be MandateEscrow's second caller.</p></div></div>
   </div>
 </div>
 
@@ -191,10 +201,10 @@ const DECK_HTML = `
   <span class="eyebrow">See it settle</span>
   <h1>Thank you.</h1>
   <div class="footer-row" style="justify-content:center;">
-    <a class="plain mono" href="/dashboard">Open the live dashboard &rarr;</a>
+    <a class="plain mono" href="/dashboard">Open the live mainnet dashboard &rarr;</a>
   </div>
   <div class="footer-row" style="justify-content:center;">
-    <a class="plain mono" href="/faucet">Get testnet funds and try it yourself &rarr;</a>
+    <a class="plain mono" href="https://arcurrent.site" target="_blank" rel="noreferrer">arcurrent.site</a>
   </div>
   <div class="footer-row" style="justify-content:center;">
     <a class="plain mono" href="https://github.com/angelraph/arcurrent" target="_blank" rel="noreferrer">github.com/angelraph/arcurrent</a>

@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "Arcurrent",
-  description: "Autonomous cross-border treasury agent, built on Arc.",
+  description: "An open settlement primitive on Arc mainnet, and the autonomous treasury agent already using it.",
 };
 
 export default function RootLayout({

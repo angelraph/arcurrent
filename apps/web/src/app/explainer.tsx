@@ -4,12 +4,12 @@ const KITS = [
   {
     name: "Developer-Controlled Wallets",
     detail:
-      "The treasury and liquidity wallets are real Circle-custodied wallets the agent signs from directly. No private key lives in this codebase.",
+      "The treasury wallet is a real Circle-custodied wallet, Live environment, the agent signs from directly. No private key lives in this codebase.",
   },
   {
     name: "App Kit / Bridge Kit (CCTP)",
     detail:
-      "When the balance runs low, the agent bridges USDC in from a second wallet on another chain, live, via Circle's Cross-Chain Transfer Protocol.",
+      "When the balance runs low, the agent can bridge USDC in from a second wallet on another chain via Circle's Cross-Chain Transfer Protocol. Proven working on testnet; disabled on mainnet for now, pending a funded Live-environment source wallet.",
   },
   {
     name: "x402 nanopayments",
@@ -17,9 +17,9 @@ const KITS = [
       "Before acting on a foreign-currency bill, the agent pays a sub-cent fee to a rate oracle for the live exchange rate. It's a real, working micropayment, not a placeholder.",
   },
   {
-    name: "A deployed smart contract",
+    name: "MandateEscrow, an open primitive",
     detail:
-      "ObligationEscrow holds the treasury's USDC on-chain and only lets the agent's wallet withdraw from it, so the payment history is independently verifiable and not just rows in a database.",
+      "Every payment is created and released as its own mandate on a permissionless contract: fund it, prove fulfillment, release atomically, with a reputation ledger that updates on-chain. Not project-owned — any address can fund, fulfill, or read it, and this agent is just its first live caller.",
   },
 ];
 
@@ -67,15 +67,16 @@ export function Explainer() {
               2
             </span>
             Watch the decision log. The agent evaluates it against the real treasury balance and
-            reserve floor, then either pays it, waits, or bridges in more USDC first if the balance
-            would run short.
+            reserve floor, then pays it, waits, or flags a liquidity shortfall if the balance would
+            run short.
           </li>
           <li className="flex gap-3">
             <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-accent-soft text-xs font-semibold text-accent">
               3
             </span>
-            Click any transaction hash to verify it yourself on Arc Testnet Explorer. Nothing here is
-            simulated.
+            Click any transaction hash to verify it yourself on Arc&apos;s mainnet explorer, or check the
+            Mandates table directly — it&apos;s a live read of on-chain state, not this project&apos;s own
+            bookkeeping. Nothing here is simulated.
           </li>
         </ol>
         <Link

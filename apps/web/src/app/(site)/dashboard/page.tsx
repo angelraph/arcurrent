@@ -10,7 +10,6 @@ import { formatUsdc } from "@/lib/format";
 import { Nav } from "../../nav";
 import { ObligationForm } from "../../obligation-form";
 import { DecisionPill, MandateStatusPill, StatusPill } from "../../status-pill";
-import { TopUpEscrowButton } from "../../topup-escrow-button";
 import { getActiveArcNetwork, type AgentDecision } from "@arcurrent/shared";
 
 function shortAddress(address: string): string {
@@ -23,7 +22,7 @@ export const dynamic = "force-dynamic";
 // cron route.
 export const maxDuration = 60;
 
-const emptyBalance: TreasuryBalances = { escrowUsdc: null, walletUsdc: null };
+const emptyBalance: TreasuryBalances = { walletUsdc: null };
 
 export default async function DashboardPage() {
   const network = getActiveArcNetwork();
@@ -67,45 +66,22 @@ export default async function DashboardPage() {
           <p className="text-sm text-foreground/80">Real balances, real obligations, real agent decisions, all on {network.name}.</p>
         </div>
 
-        <section className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <div className="rounded-xl border border-border bg-surface p-5 shadow-sm">
-            <h2 className="text-xs font-semibold uppercase tracking-wide text-muted">
-              Treasury wallet <span className="normal-case text-muted">(spendable)</span>
-            </h2>
-            {balanceUnavailable ? (
-              <p className="mt-2 text-sm text-warning">Balance temporarily unavailable. Try refreshing.</p>
-            ) : balance.walletUsdc === null ? (
-              <p className="mt-2 text-sm text-warning">
-                Not configured. Run <code className="rounded bg-warning-soft px-1.5 py-0.5 font-mono text-xs">npm run setup:wallet</code> and set TREASURY_WALLET_ID.
-              </p>
-            ) : (
-              <p className="mt-2 font-mono text-3xl font-semibold tracking-tight">
-                ${formatUsdc(balance.walletUsdc)} <span className="text-lg font-medium text-muted">USDC</span>
-              </p>
-            )}
-            <p className="mt-2 text-xs text-muted">What MandateEscrow pulls from when the agent settles an obligation.</p>
-          </div>
-          <div className="rounded-xl border border-border bg-surface p-5 shadow-sm">
-            <h2 className="text-xs font-semibold uppercase tracking-wide text-muted">
-              ObligationEscrow balance <span className="normal-case text-muted">(legacy rail)</span>
-            </h2>
-            {balanceUnavailable ? (
-              <p className="mt-2 text-sm text-warning">Balance temporarily unavailable. Try refreshing.</p>
-            ) : balance.escrowUsdc === null ? (
-              <p className="mt-2 text-sm text-warning">
-                Not configured. Deploy <code className="rounded bg-warning-soft px-1.5 py-0.5 font-mono text-xs">ObligationEscrow</code> and set OBLIGATION_ESCROW_ADDRESS.
-              </p>
-            ) : (
-              <p className="mt-2 font-mono text-3xl font-semibold tracking-tight text-muted">
-                ${formatUsdc(balance.escrowUsdc)} <span className="text-lg font-medium text-muted">USDC</span>
-              </p>
-            )}
-            {!balanceUnavailable && balance.escrowUsdc !== null && <TopUpEscrowButton />}
-            <p className="mt-2 text-xs text-muted">
-              The original pre-funded pool. Still deployed and real, just no longer in the live settlement path —
-              see Mandates below.
+        <section className="rounded-xl border border-border bg-surface p-5 shadow-sm">
+          <h2 className="text-xs font-semibold uppercase tracking-wide text-muted">
+            Treasury wallet <span className="normal-case text-muted">(spendable)</span>
+          </h2>
+          {balanceUnavailable ? (
+            <p className="mt-2 text-sm text-warning">Balance temporarily unavailable. Try refreshing.</p>
+          ) : balance.walletUsdc === null ? (
+            <p className="mt-2 text-sm text-warning">
+              Not configured. Run <code className="rounded bg-warning-soft px-1.5 py-0.5 font-mono text-xs">npm run setup:wallet</code> and set TREASURY_WALLET_ID.
             </p>
-          </div>
+          ) : (
+            <p className="mt-2 font-mono text-3xl font-semibold tracking-tight">
+              ${formatUsdc(balance.walletUsdc)} <span className="text-lg font-medium text-muted">USDC</span>
+            </p>
+          )}
+          <p className="mt-2 text-xs text-muted">What MandateEscrow pulls from when the agent settles an obligation.</p>
         </section>
 
         <section className="flex flex-col gap-3">

@@ -1,6 +1,5 @@
 import "server-only";
 import {
-  getEscrowUsdcBalance,
   getMandateReputation,
   getMandates,
   getSupabaseServerClient,
@@ -87,27 +86,14 @@ export async function getLatestDecisionByObligation(): Promise<Map<string, Agent
 }
 
 export interface TreasuryBalances {
-  /** What the agent can actually pay obligations from right now. */
-  escrowUsdc: number | null;
-  /** Sitting in the Circle-custodied wallet but not yet deposited into the escrow. */
+  /** What MandateEscrow pulls from when the agent settles an obligation. Null (not a fake number) when TREASURY_WALLET_ID isn't set. */
   walletUsdc: number | null;
 }
 
-/**
- * Live balances from Circle/Arc. Each field is null (not a fake number) when
- * its address hasn't been configured yet, so the dashboard can show an honest
- * "not set up" state instead of a fabricated balance.
- */
 export async function getTreasuryBalance(): Promise<TreasuryBalances> {
   const walletId = process.env.TREASURY_WALLET_ID;
-  const escrowAddress = process.env.OBLIGATION_ESCROW_ADDRESS as `0x${string}` | undefined;
-
-  const [walletUsdc, escrowUsdc] = await Promise.all([
-    walletId ? getTreasuryUsdcBalance(walletId) : Promise.resolve(null),
-    escrowAddress ? getEscrowUsdcBalance(escrowAddress) : Promise.resolve(null),
-  ]);
-
-  return { walletUsdc, escrowUsdc };
+  const walletUsdc = walletId ? await getTreasuryUsdcBalance(walletId) : null;
+  return { walletUsdc };
 }
 
 export interface MandateWithReputation extends Mandate {
