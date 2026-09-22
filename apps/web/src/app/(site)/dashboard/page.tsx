@@ -10,6 +10,7 @@ import { formatUsdc } from "@/lib/format";
 import { Nav } from "../../nav";
 import { ObligationForm } from "../../obligation-form";
 import { DecisionPill, MandateStatusPill, StatusPill } from "../../status-pill";
+import { WalletMandatePanel } from "../../wallet-mandate-panel";
 import { getActiveArcNetwork, type AgentDecision } from "@arcurrent/shared";
 
 function shortAddress(address: string): string {
@@ -163,6 +164,8 @@ export default async function DashboardPage() {
               on-chain state, not this project&apos;s own bookkeeping.
             </p>
           </div>
+
+          <WalletMandatePanel />
           {mandatesUnavailable ? (
             <p className="rounded-xl border border-dashed border-warning p-6 text-center text-sm text-warning">
               Mandates temporarily unavailable. Try refreshing.
