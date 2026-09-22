@@ -1,9 +1,7 @@
-test 2
+test 3
 
 ```mermaid
 flowchart TD
-    A["Dashboard<br/>Add obligation"] --> DB[("Supabase<br/>obligations table")]
-    DB -->|pay_now| B["Agent"]
-    B -.->|tx confirms| C["Circle"]
-    B -->|"approve (once) · createMandate"| D["MandateEscrow"]
+    A["Start"] -.->|tx confirms| B["Middle"]
+    B -->|"approve (once) · createMandate · release"| C["End"]
 ```
