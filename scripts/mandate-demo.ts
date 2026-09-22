@@ -7,11 +7,13 @@ import { arcPublicClient, getActiveArcNetwork } from "@arcurrent/shared";
 /**
  * Runs one real createMandate -> submitProof -> release cycle against a
  * deployed MandateEscrow, end to end, and prints every tx hash -- the same
- * "captured once, real, labeled" methodology the deck's Proof slide already
- * uses for ObligationEscrow. Two throwaway EOAs sign directly (no Circle
- * wallet involved): MandateEscrow is permissionless, funder and fulfiller
- * are just whichever addresses call it, which is the whole point of it
- * being an open primitive rather than a project-owned contract.
+ * "captured once, real, labeled" methodology the deck's Proof slide uses
+ * (the two settlements it shows came from the agent's real evaluation loop,
+ * not this script, but the same discipline applies). Two throwaway EOAs
+ * sign directly (no Circle wallet involved): MandateEscrow is permissionless,
+ * funder and fulfiller are just whichever addresses call it, which is the
+ * whole point of it being an open primitive rather than a project-owned
+ * contract.
  */
 const mandateEscrowAbi = parseAbi([
   "function createMandate(address fulfiller, uint256 amount, uint256 deadline) returns (uint256)",

@@ -23,7 +23,43 @@ if a build breaks against a listed version.
   routing internally, rather than hardcoding these.
 - Fully EVM-compatible: Hardhat/viem/ethers work unmodified. No KYC/allowlist for
   testnet.
-- No mainnet yet as of 2026-07-14.
+
+## Arc Mainnet (verified 2026-09-22, live since ~2026-09-16)
+
+- Chain ID: `5042`, confirmed via docs.arc.io/arc/references/connect-to-arc.
+- RPC: `https://rpc.mainnet.arc.io` (Blockdaemon/dRPC/QuickNode mirrors follow the same
+  `<provider>.mainnet.arc.io` naming pattern as testnet).
+- Explorer: `https://explorer.arc.io`
+- No faucet, obviously -- mainnet USDC is real money. Fund a wallet yourself.
+- USDC ERC-20 interface address: same fixed precompile as testnet,
+  `0x3600000000000000000000000000000000000000`, confirmed via docs.arc.io. Same
+  18-decimal-native / 6-decimal-ERC20-view split as testnet; don't mix them.
+- **Not resolved, don't guess:** CCTP domain ID for mainnet, and Circle's `usdcTokenId`
+  for mainnet USDC (resolve the latter from a live `getWalletTokenBalance` call against
+  a real mainnet wallet, the same way the testnet one was resolved -- see the TODOs in
+  `packages/shared/src/chain.ts`).
+- Circle's `blockchain` identifier for mainnet wallet creation is **`"ARC"`** (testnet is
+  `"ARC-TESTNET"`) -- resolved directly from
+  `@circle-fin/developer-controlled-wallets`' own installed type definitions (its
+  `Blockchain`/`TokenBlockchain` enums), not a guess or docs page.
+- **Real gotcha, worth knowing:** a Sandbox/Test Circle API key (`TEST_API_KEY:...`)
+  cannot touch any mainnet blockchain at all -- `createWallets({ blockchains: ["ARC"] })`
+  fails with error `156006` ("TEST_API key cannot be used with blockchain mainnets").
+  Needs a **Live** API key from console.circle.com's Live environment, not just a
+  different value for the same Sandbox key.
+- **Real gotcha, worth knowing:** the entity secret is registered per environment, not
+  once per account. Reusing the Sandbox-registered entity secret against a Live API key
+  fails with error `156016` ("The entity secret has not been set yet. Please provide
+  encrypted ciphertext in the console."), even though it's a valid-looking secret. Fix:
+  `tsx scripts/setup-entity-secret.ts generate` for a **new** Live-scoped secret, then
+  `register` it -- this writes a `recovery_file_*.dat` to the repo root (gitignored by
+  `recovery_file_*.dat` in `.gitignore`); back it up outside the repo too, it's what lets
+  Circle recover this entity's wallets if the secret is ever lost.
+- A third-party report (github.com/circlefin/arc-node issue #454, unofficial, not
+  independently reproduced here) claims the public mainnet RPC load-balances across
+  backends with inconsistent chain heads (occasional `-32014` errors) and caps
+  `eth_getLogs` at ~10,000 blocks. Treat RPC retries as normal, not fatal, the same as
+  the fallback transport already does for testnet's rate limiting.
 
 ## Circle SDKs (all confirmed live on the npm registry, not just in docs)
 
