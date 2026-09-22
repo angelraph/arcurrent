@@ -22,6 +22,8 @@ export const ARC_TESTNET = {
    */
   usdcErc20Address: "0x3600000000000000000000000000000000000000" as const,
   usdcErc20Decimals: 6,
+  /** Circle's blockchain identifier for wallet creation (`createWallets({ blockchains: [...] })`). */
+  circleBlockchainId: "ARC-TESTNET" as const,
   /**
    * Circle's own token identifier for USDC on ARC-TESTNET, required by
    * `createTransaction` (tokenAddress alone is rejected with "API parameter
@@ -42,16 +44,16 @@ export const ARC_TESTNET = {
  * same fixed 0x3600... address as testnet) verified against docs.arc.io/arc/
  * references/connect-to-arc on 2026-09-22.
  *
- * NOT yet verified — fill in before a real mainnet deploy, the same way
- * usdcTokenId below was resolved on testnet:
+ * NOT yet verified — fill in before relying on it:
  * - `usdcTokenId`: Circle's internal token id for USDC on Arc Mainnet. Create
  *   the mainnet treasury wallet first, then read it off a
  *   `getWalletTokenBalance` response rather than guessing.
  * - `cctpDomainId`: not published in the docs page checked; confirm with
  *   Circle's CCTP domain reference before wiring Bridge Kit to mainnet.
- * - Circle's `blockchain` enum value for mainnet wallet creation (whatever
- *   replaces `"ARC-TESTNET"`) — check developers.circle.com/wallets docs or
- *   the API's accepted-values error message directly.
+ *
+ * `circleBlockchainId: "ARC"` (mainnet) vs `"ARC-TESTNET"` — resolved
+ * directly from @circle-fin/developer-controlled-wallets' own installed
+ * type definitions (the `Blockchain`/`TokenBlockchain` enums), not a guess.
  *
  * A third-party report (github.com/circlefin/arc-node issue #454, unofficial)
  * notes the public mainnet RPC load-balances across backends with
@@ -73,6 +75,7 @@ export const ARC_MAINNET = {
   nativeCurrency: { name: "USDC", symbol: "USDC", decimals: 18 },
   usdcErc20Address: "0x3600000000000000000000000000000000000000" as const,
   usdcErc20Decimals: 6,
+  circleBlockchainId: "ARC" as const,
   /** TODO: resolve via getWalletTokenBalance against the mainnet treasury wallet — do not guess. */
   usdcTokenId: null as string | null,
   /** TODO: confirm against Circle's CCTP domain reference before mainnet Bridge Kit use. */
@@ -94,6 +97,7 @@ export interface ArcNetworkConfig {
   nativeCurrency: { name: string; symbol: string; decimals: number };
   usdcErc20Address: `0x${string}`;
   usdcErc20Decimals: number;
+  circleBlockchainId: "ARC" | "ARC-TESTNET";
   usdcTokenId: string | null;
   cctpDomainId: number | null;
 }
