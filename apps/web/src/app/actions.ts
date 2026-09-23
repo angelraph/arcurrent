@@ -14,14 +14,12 @@ export interface CreateObligationState {
   warning?: string;
 }
 
-// The public dashboard has no login: autonomy is the point, no human
-// approves each transaction, which also means no login gate on who can
-// trigger a real payout from the escrow. These two limits are a lightweight
-// abuse guard, not real access control, real access control would defeat
-// the "try it yourself" point of the demo. A determined bad actor can still
-// get around a per-IP cooldown; this just stops one accidental or casual
-// burst of submissions from draining the escrow or flooding the obligations
-// table before a judge looks at it.
+// This form spends Arcurrent's own treasury, not the submitter's money, so
+// unlike MandateEscrow (permissionless by design, anyone funds their own
+// mandate) it needs a real gate: OWNER_SECRET, checked below, restricts
+// who can queue a payout at all. The cap and cooldown are what's left over
+// from before that gate existed; kept as defense in depth against the
+// owner's own passcode leaking or being brute-forced, not the primary guard.
 const MAX_PUBLIC_OBLIGATION_USDC = 25;
 const SUBMISSION_COOLDOWN_MS = 5 * 60 * 1000;
 
@@ -36,6 +34,15 @@ export async function createObligation(
   _prevState: CreateObligationState,
   formData: FormData
 ): Promise<CreateObligationState> {
+  const ownerSecret = process.env.OWNER_SECRET;
+  if (!ownerSecret) {
+    return { error: "OWNER_SECRET is not configured; this form is locked until it is." };
+  }
+  const submittedSecret = String(formData.get("ownerSecret") ?? "");
+  if (submittedSecret !== ownerSecret) {
+    return { error: "Wrong owner passcode. This spends Arcurrent's own treasury, not yours; use the wallet panel above to fund your own mandate instead." };
+  }
+
   const vendorName = String(formData.get("vendorName") ?? "").trim();
   const amount = Number(formData.get("amount"));
   const currency = String(formData.get("currency") ?? "USDC") as Currency;

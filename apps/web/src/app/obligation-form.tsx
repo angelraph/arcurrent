@@ -44,6 +44,10 @@ export function ObligationForm({ networkName }: { networkName: string }) {
           className={`${inputClass} font-mono`}
         />
       </label>
+      <label className="col-span-2 text-sm font-medium">
+        Owner passcode <span className="font-normal text-muted">(this spends Arcurrent&apos;s own treasury, restricted to the project owner &middot; everyone else, use the wallet panel above to fund your own mandate)</span>
+        <input name="ownerSecret" type="password" required className={inputClass} />
+      </label>
       {state.error && <p className="col-span-2 text-sm text-danger">{state.error}</p>}
       {state.warning && <p className="col-span-2 text-sm text-warning">{state.warning}</p>}
       <button
