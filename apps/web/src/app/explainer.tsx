@@ -19,7 +19,7 @@ const KITS = [
   {
     name: "MandateEscrow, an open primitive",
     detail:
-      "Every payment is created and released as its own mandate on a permissionless contract: fund it, prove fulfillment, release atomically, with a reputation ledger that updates on-chain. Not project-owned — any address can fund, fulfill, or read it, and this agent is just its first live caller.",
+      "Every payment is created and released as its own mandate on a permissionless contract: fund it, prove fulfillment, release atomically, with a reputation ledger that updates on-chain. Not project-owned · any address can fund, fulfill, or read it, and this agent is just its first live caller.",
   },
 ];
 
@@ -75,7 +75,7 @@ export function Explainer() {
               3
             </span>
             Click any transaction hash to verify it yourself on Arc&apos;s mainnet explorer, or check the
-            Mandates table directly — it&apos;s a live read of on-chain state, not this project&apos;s own
+            Mandates table directly · it&apos;s a live read of on-chain state, not this project&apos;s own
             bookkeeping. Nothing here is simulated.
           </li>
         </ol>

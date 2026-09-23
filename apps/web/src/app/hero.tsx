@@ -16,7 +16,7 @@ export function Hero() {
         <p className="max-w-xl text-base leading-relaxed text-foreground sm:text-lg">
           Arcurrent&apos;s treasury agent watches what you owe, decides when it&apos;s safe to pay from
           real signals, and settles by creating and releasing a mandate on{" "}
-          <span className="font-mono text-sm">MandateEscrow</span> — an open, permissionless contract any
+          <span className="font-mono text-sm">MandateEscrow</span>, an open, permissionless contract any
           address can fund, fulfill, or read. No human clicks approve. Every settlement is real, on Arc
           mainnet, and independently verifiable on-chain.
         </p>
