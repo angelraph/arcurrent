@@ -157,7 +157,7 @@ function TxResult({ state }: { state: TxState }) {
   );
 }
 
-function CreateMandateForm() {
+function CreateMandateForm({ onCreated }: { onCreated: (id: bigint) => void }) {
   const { address } = useAccount();
   const router = useRouter();
   const [fulfiller, setFulfiller] = useState("");
@@ -263,9 +263,13 @@ function CreateMandateForm() {
         }
       }
       setState({
-        success: mandateId !== null ? `Mandate #${mandateId} created and funded.` : "Mandate created and funded.",
+        success:
+          mandateId !== null
+            ? `Mandate #${mandateId} created and funded. Loaded into "Manage a mandate" to submit proof or release it.`
+            : "Mandate created and funded.",
         txHash: createHash,
       });
+      if (mandateId !== null) onCreated(mandateId);
       setFulfiller("");
       setAmount("");
       setDeadlineDays("");
@@ -328,11 +332,15 @@ function CreateMandateForm() {
   );
 }
 
-function ManageMandateForm() {
+function ManageMandateForm({ initialMandateId }: { initialMandateId?: bigint }) {
   const { address } = useAccount();
   const router = useRouter();
-  const [mandateIdInput, setMandateIdInput] = useState("");
-  const [loadedId, setLoadedId] = useState<bigint | null>(null);
+  const [mandateIdInput, setMandateIdInput] = useState(initialMandateId?.toString() ?? "");
+  const [loadedId, setLoadedId] = useState<bigint | null>(initialMandateId ?? null);
+  // Captured once at mount (this component remounts via a `key` in
+  // WalletMandatePanel whenever a new mandate is created) -- drives the
+  // "loaded automatically" hint without needing an effect to sync it.
+  const [autoLoaded] = useState(initialMandateId !== undefined);
   const [proofText, setProofText] = useState("");
   const [state, setState] = useState<TxState>({});
   const [busy, setBusy] = useState(false);
@@ -394,6 +402,9 @@ function ManageMandateForm() {
 
   return (
     <div className="flex flex-col gap-3">
+      {autoLoaded && (
+        <p className="text-xs text-accent">Loaded automatically: the mandate you just created.</p>
+      )}
       <form onSubmit={loadMandate} className="flex items-end gap-2">
         <label className="flex-1 text-xs font-medium text-muted">
           Mandate #
@@ -509,6 +520,7 @@ function ManageMandateForm() {
 }
 
 export function WalletMandatePanel() {
+  const [justCreatedId, setJustCreatedId] = useState<bigint | null>(null);
   return (
     <section className="flex flex-col gap-3 rounded-xl border-2 border-accent bg-surface p-5 shadow-sm">
       <div className="flex flex-col gap-1">
@@ -525,11 +537,14 @@ export function WalletMandatePanel() {
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div className="flex flex-col gap-2">
               <h3 className="text-xs font-semibold uppercase tracking-wide text-muted">Create a mandate</h3>
-              <CreateMandateForm />
+              <CreateMandateForm onCreated={setJustCreatedId} />
             </div>
             <div className="flex flex-col gap-2">
               <h3 className="text-xs font-semibold uppercase tracking-wide text-muted">Manage a mandate</h3>
-              <ManageMandateForm />
+              <ManageMandateForm
+                key={justCreatedId?.toString() ?? "manage"}
+                initialMandateId={justCreatedId ?? undefined}
+              />
             </div>
           </div>
         </div>
