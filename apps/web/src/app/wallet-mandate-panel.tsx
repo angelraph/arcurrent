@@ -73,7 +73,7 @@ function ConnectGate({ children }: { children: React.ReactNode }) {
             {/no provider|not found/i.test(error.message) && (
               <>
                 {" "}
-                No wallet extension found —{" "}
+                No wallet extension found ·{" "}
                 <a href="https://metamask.io/download/" target="_blank" rel="noreferrer" className="text-accent underline">
                   install MetaMask
                 </a>{" "}
@@ -133,6 +133,28 @@ function AccountBar() {
 interface TxState {
   error?: string;
   success?: string;
+  txHash?: `0x${string}`;
+}
+
+/** Same explorer link pattern used in the agent decision log below on this page -- so a wallet-connect action is just as verifiable as an agent one. */
+function TxResult({ state }: { state: TxState }) {
+  if (!state.error && !state.success) return null;
+  return (
+    <div className="flex flex-col gap-1">
+      {state.error && <p className="text-xs text-danger">{state.error}</p>}
+      {state.success && <p className="text-xs text-success">{state.success}</p>}
+      {state.txHash && (
+        <a
+          href={`${arcMainnet.blockExplorers.default.url}/tx/${state.txHash}`}
+          target="_blank"
+          rel="noreferrer"
+          className="break-all font-mono text-xs text-accent hover:underline"
+        >
+          {state.txHash} ↗
+        </a>
+      )}
+    </div>
+  );
 }
 
 function CreateMandateForm() {
@@ -161,7 +183,7 @@ function CreateMandateForm() {
   // even though it's a module-level `const` that can't actually change.
   const escrowAddress = MANDATE_ESCROW_ADDRESS;
 
-  const { data: allowance } = useReadContract({
+  const { data: allowance, refetch: refetchAllowance } = useReadContract({
     address: USDC_ADDRESS,
     abi: erc20Abi,
     functionName: "allowance",
@@ -209,9 +231,14 @@ function CreateMandateForm() {
           args: [escrowAddress, MAX_UINT256],
         });
         await waitForTransactionReceipt(wagmiConfig, { hash: approveHash });
-        setStep("idle");
-        setState({ success: "USDC approved. Click again to create the mandate." });
-        return;
+        // Chain straight into creating the mandate instead of making the
+        // user click a second time -- the earlier version stopped here and
+        // relied on the allowance read to refresh on its own before the
+        // next click, which it doesn't do automatically, so the button
+        // stayed stuck offering to "approve" again even though approval had
+        // already gone through. refetch() gives back the fresh value
+        // directly rather than waiting on a render to pick up new state.
+        await refetchAllowance();
       }
 
       setStep("creating");
@@ -235,7 +262,10 @@ function CreateMandateForm() {
           // Not a MandateCreated log (e.g. the USDC Transfer log in the same receipt) -- skip.
         }
       }
-      setState({ success: mandateId !== null ? `Mandate #${mandateId} created and funded.` : "Mandate created and funded." });
+      setState({
+        success: mandateId !== null ? `Mandate #${mandateId} created and funded.` : "Mandate created and funded.",
+        txHash: createHash,
+      });
       setFulfiller("");
       setAmount("");
       setDeadlineDays("");
@@ -280,8 +310,7 @@ function CreateMandateForm() {
           className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm font-mono outline-none focus:border-accent"
         />
       </label>
-      {state.error && <p className="text-xs text-danger">{state.error}</p>}
-      {state.success && <p className="text-xs text-success">{state.success}</p>}
+      <TxResult state={state} />
       <button
         type="submit"
         disabled={busy}
@@ -346,7 +375,7 @@ function ManageMandateForm() {
     try {
       const hash = await fn();
       await waitForTransactionReceipt(wagmiConfig, { hash });
-      setState({ success: "Confirmed on-chain." });
+      setState({ success: "Confirmed on-chain.", txHash: hash });
       refetch();
       router.refresh();
     } catch (err) {
@@ -396,7 +425,7 @@ function ManageMandateForm() {
             {statusName === "Funded" && (isOpenUnclaimed || isFulfiller) && (
               <div className="flex items-end gap-2">
                 <label className="flex-1 text-xs font-medium text-muted">
-                  Proof (any text — hashed client-side)
+                  Proof (any text · hashed client-side)
                   <input
                     value={proofText}
                     onChange={(e) => setProofText(e.target.value)}
@@ -468,26 +497,26 @@ function ManageMandateForm() {
               <p className="text-muted">Assigned to a different fulfiller. Nothing to do here with this wallet.</p>
             )}
             {(statusName === "Released" || statusName === "Refunded") && (
-              <p className="text-muted">Final state — nothing left to do.</p>
+              <p className="text-muted">Final state · nothing left to do.</p>
             )}
           </div>
         </div>
       )}
 
-      {state.error && <p className="text-xs text-danger">{state.error}</p>}
-      {state.success && <p className="text-xs text-success">{state.success}</p>}
+      <TxResult state={state} />
     </div>
   );
 }
 
 export function WalletMandatePanel() {
   return (
-    <section className="flex flex-col gap-3 rounded-xl border border-border bg-surface p-5 shadow-sm">
+    <section className="flex flex-col gap-3 rounded-xl border-2 border-accent bg-surface p-5 shadow-sm">
       <div className="flex flex-col gap-1">
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-muted">Use MandateEscrow yourself</h2>
+        <h2 className="text-sm font-semibold uppercase tracking-wide text-accent">Use MandateEscrow yourself</h2>
         <p className="text-xs text-muted">
           This doesn&apos;t touch Arcurrent&apos;s treasury. Connect your own wallet and fund a mandate with
-          your own USDC on Arc mainnet — the same open contract the agent above uses, available to anyone.
+          your own USDC on Arc mainnet · the same open, permissionless contract Arcurrent&apos;s own agent
+          uses below, available to anyone.
         </p>
       </div>
       <ConnectGate>
