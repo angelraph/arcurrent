@@ -152,6 +152,55 @@ Known gaps, tracked rather than faked:
   wallet and stops -- there's no separate pool to deposit into anymore now that
   settlement pulls straight from the wallet.
 
+## Build on MandateEscrow
+
+`MandateEscrow` is not Arcurrent-owned infrastructure -- it's a standalone, permissionless
+primitive any address (a script, another agent, a different hackathon project) can call
+directly, with no relationship to this repo required. Live on Arc mainnet at
+[`0xca901f58fb82FE5FF459264a419b8cF8c75b3371`](https://explorer.arc.io/address/0xca901f58fb82FE5FF459264a419b8cF8c75b3371),
+MIT-licensed source at
+[`packages/contracts/contracts/MandateEscrow.sol`](packages/contracts/contracts/MandateEscrow.sol).
+
+The whole interface is four write functions and one read:
+
+```ts
+import { createWalletClient, http, parseAbi, parseUnits } from "viem";
+import { privateKeyToAccount } from "viem/accounts";
+
+const mandateEscrowAbi = parseAbi([
+  "function createMandate(address fulfiller, uint256 amount, uint256 deadline) returns (uint256)",
+  "function submitProof(uint256 mandateId, bytes32 proofHash)",
+  "function release(uint256 mandateId, address[] destinations, uint256[] amounts)",
+  "function refund(uint256 mandateId)",
+  "function reputationOf(address) view returns (uint64 completed, uint64 refunded, uint256 volumeSettled)",
+]);
+
+const ESCROW = "0xca901f58fb82FE5FF459264a419b8cF8c75b3371";
+const USDC = "0x3600000000000000000000000000000000000000"; // fixed precompile, same on every Arc network
+
+const wallet = createWalletClient({
+  account: privateKeyToAccount(process.env.PRIVATE_KEY as `0x${string}`),
+  chain: { id: 5042, name: "Arc", nativeCurrency: { name: "USDC", symbol: "USDC", decimals: 18 }, rpcUrls: { default: { http: ["https://rpc.mainnet.arc.io"] } } },
+  transport: http(),
+});
+
+// 1. approve, then fund a mandate for a known fulfiller (or address(0) for "open, first proof wins")
+await wallet.writeContract({ address: USDC, abi: parseAbi(["function approve(address,uint256) returns (bool)"]), functionName: "approve", args: [ESCROW, parseUnits("10", 6)] });
+const mandateId = await wallet.writeContract({ address: ESCROW, abi: mandateEscrowAbi, functionName: "createMandate", args: ["0xFulfillerAddress", parseUnits("10", 6), 0n] });
+
+// 2. the fulfiller posts proof once the work is done
+// await fulfillerWallet.writeContract({ address: ESCROW, abi: mandateEscrowAbi, functionName: "submitProof", args: [mandateId, proofHash] });
+
+// 3. the funder releases -- atomically, to one or more destinations
+// await wallet.writeContract({ address: ESCROW, abi: mandateEscrowAbi, functionName: "release", args: [mandateId, [fulfillerAddr, feeAddr], [mostOfIt, smallFee]] });
+```
+
+No registration, no allowlist, no fee to this project. `scripts/mandate-demo.ts` and
+`scripts/mandate-split-demo.ts` run the full cycles (single payout, and an atomic
+multi-destination split) end to end against the real mainnet contract and print every
+tx hash -- read them for a complete working example, or just point a browser wallet at
+the dashboard's "Use MandateEscrow yourself" panel and try it with no code at all.
+
 ## Setup
 
 Local development, Arc Testnet -- free, no real money. See "Deploying to Arc mainnet"

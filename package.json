@@ -2,7 +2,8 @@
   "name": "arcurrent",
   "private": true,
   "version": "0.1.0",
-  "description": "Arcurrent — autonomous cross-border treasury agent, built on Arc.",
+  "description": "Arcurrent: autonomous cross-border treasury agent, built on Arc.",
+  "license": "MIT",
   "workspaces": [
     "apps/*",
     "packages/*"

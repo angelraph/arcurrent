@@ -60,6 +60,39 @@ if a build breaks against a listed version.
   backends with inconsistent chain heads (occasional `-32014` errors) and caps
   `eth_getLogs` at ~10,000 blocks. Treat RPC retries as normal, not fatal, the same as
   the fallback transport already does for testnet's rate limiting.
+- **Reproduced independently (2026-09-23):** viem's `waitForTransactionReceipt` (block-
+  filter based polling) repeatedly timed out against a tx that a plain
+  `getTransactionReceipt` call found immediately when queried directly -- consistent
+  with the inconsistent-chain-heads report above (whichever backend serves the
+  block-filter poll isn't always the one that already has the tx). Scripts that need to
+  wait for confirmation against mainnet should poll `getTransactionReceipt` directly in
+  a retry loop (see `waitForReceipt()` in `scripts/mandate-split-demo.ts`) instead of
+  relying on `waitForTransactionReceipt`.
+
+## Security self-review: MandateEscrow.sol (2026-09-23)
+
+No professional audit -- out of scope/budget for a microgrant-stage submission -- but
+worth being explicit about what was actually checked rather than leaving it unstated:
+
+- **Static analysis**: `slither packages/contracts/contracts/MandateEscrow.sol
+  --solc-remaps "@openzeppelin=node_modules/@openzeppelin"` (slither 0.11.6, solc
+  0.8.37) reports zero reentrancy, access-control, unchecked-call, or arithmetic
+  findings. The only hits are a `timestamp`-comparison note on the day-granularity
+  deadline checks (expected and low-risk at that granularity) and boilerplate about
+  OpenZeppelin's own library pragma ranges/inline assembly inside `SafeERC20` --
+  neither is about this contract's logic.
+- **Manual review of the trust model**: `release()` is funder-gated and pays out
+  whatever `destinations`/`amounts` the funder supplies, which must sum exactly to the
+  mandate's locked amount (`require(total == mandate.amount)`) -- so a funder can route
+  funds anywhere but can never move more or less than what's actually escrowed.
+  `refund()` only fires past `deadline` and only from `Funded` (never after proof was
+  submitted), so a fulfiller who already proved can't be refunded out from under them.
+  There is deliberately no arbitration: a funder can still grief a fulfiller by
+  withholding release after proof, and that's stated as a known, accepted limitation in
+  the contract's own top-level comment, not something quietly hidden.
+- **Not covered**: formal verification, fuzzing beyond the unit tests already in
+  `MandateEscrow.t.sol`, and a second independent reviewer. Treat this as "self-reviewed
+  and unit-tested," not "audited."
 
 ## Circle SDKs (all confirmed live on the npm registry, not just in docs)
 
