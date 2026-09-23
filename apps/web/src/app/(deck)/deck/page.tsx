@@ -49,13 +49,13 @@ const DECK_HTML = `
   <span class="eyebrow">Proof</span>
   <h1>Two real settlements, five real transactions, on Arc mainnet.</h1>
   <p class="cap" style="margin: 0;">Captured 2026&#8209;09&#8209;22, real mainnet USDC. Current counts are on the live dashboard and Mandates table.</p>
-  <p>Two obligations, $0.05 and $0.03 USDC, settled by creating and releasing mandates on MandateEscrow &mdash; not a pre-funded pool, straight from the treasury wallet's own balance.</p>
+  <p>Two obligations, $0.05 and $0.03 USDC, settled by creating and releasing mandates on MandateEscrow &middot; not a pre-funded pool, straight from the treasury wallet's own balance.</p>
 
   <div class="balance-strip">
     <div class="step"><span class="figure hi">$0.20</span><span class="arrow">treasury wallet balance after funding</span></div>
-    <div class="step move"><span class="arrow">&darr; mandate #0: approve, create, release &mdash; $0.05 to the fulfiller</span></div>
+    <div class="step move"><span class="arrow">&darr; mandate #0: approve, create, release &middot; $0.05 to the fulfiller</span></div>
     <div class="step"><span class="figure">$0.14</span><span class="arrow">balance after mandate #0, gas included</span></div>
-    <div class="step move"><span class="arrow">&darr; mandate #1: create, release &mdash; $0.03 to the fulfiller</span></div>
+    <div class="step move"><span class="arrow">&darr; mandate #1: create, release &middot; $0.03 to the fulfiller</span></div>
     <div class="step"><span class="figure">$0.10</span><span class="arrow">balance after mandate #1, gas included</span></div>
   </div>
 
@@ -86,7 +86,7 @@ const DECK_HTML = `
       <span class="figure">0x4df8&hellip;42c63</span>
     </div>
   </div>
-  <p class="cap" style="margin: 0;">Fulfiller reputation after both: 2 completed, 0 refunded, $0.08 volume settled &mdash; read live from the contract, not this project's database.</p>
+  <p class="cap" style="margin: 0;">Fulfiller reputation after both: 2 completed, 0 refunded, $0.08 volume settled &middot; read live from the contract, not this project's database.</p>
 </div>
 
 <div class="slide" id="s5">
@@ -100,7 +100,7 @@ const DECK_HTML = `
     </div>
     <div class="card">
       <h3>MandateEscrow</h3>
-      <p>A permissionless contract on Arc mainnet: fund a mandate for anyone, prove fulfillment, release atomically, split payouts, refund on deadline. Reputation updates on-chain. Not project-owned &mdash; this agent is just its first live caller.</p>
+      <p>A permissionless contract on Arc mainnet: fund a mandate for anyone, prove fulfillment, release atomically, split payouts, refund on deadline. Reputation updates on-chain. Not project-owned &middot; this agent is just its first live caller.</p>
     </div>
     <div class="card">
       <h3>App Kit &middot; Bridge (CCTP)</h3>
@@ -162,7 +162,7 @@ const DECK_HTML = `
     </div>
     <div class="card">
       <h3>Technical credibility</h3>
-      <p>Real contracts, real mainnet deployment, a real autonomous caller &mdash; not a testnet-only illustration.</p>
+      <p>Real contracts, real mainnet deployment, a real autonomous caller &middot; not a testnet-only illustration.</p>
     </div>
     <div class="card">
       <h3>Depth</h3>
