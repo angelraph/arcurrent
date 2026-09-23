@@ -87,6 +87,15 @@ const DECK_HTML = `
     </div>
   </div>
   <p class="cap" style="margin: 0;">Fulfiller reputation after both: 2 completed, 0 refunded, $0.08 volume settled &middot; read live from the contract, not this project's database.</p>
+
+  <p class="cap" style="margin: 16px 0 0;">Bonus proof, captured 2026&#8209;09&#8209;23: the one capability the two settlements above don't show, since both paid a single destination.</p>
+  <div class="ledger">
+    <div class="ledger-row">
+      <span class="step">Split release</span>
+      <span class="desc">Mandate #4 released in one transaction to two destinations at once, $0.04 to the fulfiller and $0.02 fee to a second address &middot; atomic, not two separate transfers</span>
+      <span class="figure">0x9acb&hellip;1398</span>
+    </div>
+  </div>
 </div>
 
 <div class="slide" id="s5">

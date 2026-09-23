@@ -1,8 +1,8 @@
 import { config } from "dotenv";
 config({ path: ".env" });
-import { createWalletClient, http, parseAbi, parseUnits, formatUnits } from "viem";
+import { createPublicClient, createWalletClient, http, parseAbi, parseUnits, formatUnits } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
-import { arcPublicClient, getActiveArcNetwork } from "@arcurrent/shared";
+import { getActiveArcNetwork } from "@arcurrent/shared";
 
 /**
  * Proves the one MandateEscrow capability mandate-demo.ts doesn't: an
@@ -19,23 +19,6 @@ const mandateEscrowAbi = parseAbi([
   "function nextMandateId() view returns (uint256)",
 ]);
 const erc20Abi = parseAbi(["function approve(address spender, uint256 amount) returns (bool)"]);
-
-/**
- * viem's waitForTransactionReceipt kept timing out against this RPC even
- * though the tx had already confirmed (getTransactionReceipt found it
- * immediately) -- an RPC polling quirk, not an actual failure. Plain
- * getTransactionReceipt in a retry loop sidesteps whatever that mismatch is.
- */
-async function waitForReceipt(hash: `0x${string}`, attempts = 60, delayMs = 5000) {
-  for (let i = 0; i < attempts; i++) {
-    try {
-      return await arcPublicClient.getTransactionReceipt({ hash });
-    } catch {
-      await new Promise((resolve) => setTimeout(resolve, delayMs));
-    }
-  }
-  throw new Error(`Receipt for ${hash} not found after ${attempts} attempts.`);
-}
 
 async function main() {
   const escrowAddress = process.env.MANDATE_ESCROW_ADDRESS as `0x${string}` | undefined;
@@ -54,6 +37,25 @@ async function main() {
   };
   const transport = http(network.rpcUrls.default);
   const wallet = createWalletClient({ account: privateKeyToAccount(funderKey), chain, transport });
+  // Single-endpoint client, deliberately not @arcurrent/shared's arcPublicClient --
+  // that one fans reads out across four RPC backends (fallback transport), and
+  // those backends can lag behind each other on indexing a fresh tx (the
+  // "inconsistent chain heads" gotcha in docs/STACK.md). A receipt-polling loop
+  // that hits a different lagging backend each retry can spin for minutes on a
+  // tx that already confirmed. Pinned to the same single endpoint the wallet
+  // itself submits through avoids that entirely.
+  const publicClient = createPublicClient({ chain, transport });
+
+  async function waitForReceipt(hash: `0x${string}`, attempts = 30, delayMs = 3000) {
+    for (let i = 0; i < attempts; i++) {
+      try {
+        return await publicClient.getTransactionReceipt({ hash });
+      } catch {
+        await new Promise((resolve) => setTimeout(resolve, delayMs));
+      }
+    }
+    throw new Error(`Receipt for ${hash} not found after ${attempts} attempts.`);
+  }
 
   const total = parseUnits("0.06", network.usdcErc20Decimals);
   const fulfillerShare = parseUnits("0.04", network.usdcErc20Decimals);
@@ -82,7 +84,7 @@ async function main() {
   await waitForReceipt(createHash);
   console.log("createMandate tx:", createHash);
 
-  const nextId = await arcPublicClient.readContract({
+  const nextId = await publicClient.readContract({
     address: escrowAddress,
     abi: mandateEscrowAbi,
     functionName: "nextMandateId",
