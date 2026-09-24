@@ -1,0 +1,39 @@
+{
+  "name": "@arcurrent/mandate-mcp",
+  "version": "0.1.0",
+  "description": "MCP server that lets any AI agent use MandateEscrow on Arc: read mandates and reputation, and (opt-in) create, prove, release and refund them.",
+  "license": "MIT",
+  "type": "module",
+  "main": "dist/server.js",
+  "types": "dist/server.d.ts",
+  "bin": {
+    "mandate-mcp": "dist/index.js"
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "keywords": ["mcp", "model-context-protocol", "arc", "usdc", "escrow", "agents"],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/angelraph/arcurrent.git",
+    "directory": "packages/mandate-mcp"
+  },
+  "scripts": {
+    "prebuild": "npm run build -w @arcurrent/mandate-sdk",
+    "build": "tsc -p tsconfig.json",
+    "pretest": "npm run build -w @arcurrent/mandate-sdk",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@arcurrent/mandate-sdk": "*",
+    "@modelcontextprotocol/sdk": "^1.30.1",
+    "viem": "^2.55.2",
+    "zod": "^3.25.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.0",
+    "typescript": "^5.5.0",
+    "vitest": "^2.1.9"
+  }
+}

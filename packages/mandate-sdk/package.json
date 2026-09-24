@@ -1,0 +1,38 @@
+{
+  "name": "@arcurrent/mandate-sdk",
+  "version": "0.1.0",
+  "description": "Typed client for MandateEscrow, the open, permissionless escrow and reputation primitive live on Arc mainnet.",
+  "license": "MIT",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "keywords": ["arc", "usdc", "escrow", "agents", "viem", "mandate"],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/angelraph/arcurrent.git",
+    "directory": "packages/mandate-sdk"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "vitest run"
+  },
+  "peerDependencies": {
+    "viem": "^2.55.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.0",
+    "typescript": "^5.5.0",
+    "viem": "^2.55.2",
+    "vitest": "^2.1.9"
+  }
+}

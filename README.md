@@ -80,6 +80,10 @@ packages/
                single-owner pool it generalizes (still deployed and tested on
                testnet, superseded as the live settlement path -- see Status)
   shared/      Shared types + Arc network config used by web and agent
+  mandate-sdk/ Typed viem client for MandateEscrow: reads, and writes with spend
+               caps, exact-amount approvals and simulate-first error handling
+  mandate-mcp/ MCP server exposing MandateEscrow to any AI agent: read-only by
+               default, fund-moving tools only when explicitly enabled
 ```
 
 ## Status
@@ -162,7 +166,17 @@ directly, with no relationship to this repo required. Live on Arc mainnet at
 MIT-licensed source at
 [`packages/contracts/contracts/MandateEscrow.sol`](packages/contracts/contracts/MandateEscrow.sol).
 
-The whole interface is four write functions and one read:
+Two ready-made ways in, both in this repo: [`@arcurrent/mandate-sdk`](packages/mandate-sdk)
+is a typed client (spend caps, exact-amount approvals, every write simulated first so
+failures read as clear errors, receipt polling that works on Arc's RPC), and
+[`@arcurrent/mandate-mcp`](packages/mandate-mcp) is an MCP server that hands the same
+contract to any AI agent as tools, read-only by default with two spend limits when
+writes are on. A real create, prove and release cycle has been run through the MCP
+server end to end against mainnet (`scripts/mandate-mcp-e2e.ts`). They are not
+published to npm yet.
+
+The raw interface, if you would rather call the contract directly, is four write
+functions and one read:
 
 ```ts
 import { createWalletClient, http, parseAbi, parseUnits } from "viem";
