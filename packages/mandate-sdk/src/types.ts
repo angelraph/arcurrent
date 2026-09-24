@@ -48,3 +48,35 @@ export interface CreateMandateResult extends TxResult {
 }
 
 export type ProofInput = { text: string } | { hash: Hex };
+
+export interface VaultPolicy {
+  owner: `0x${string}`;
+  operator: `0x${string}`;
+  guardian: `0x${string}`;
+  /** Base units (6 decimals) and the same value as a decimal string. */
+  perPaymentCap: bigint;
+  perPaymentCapUsdc: string;
+  dailyCap: bigint;
+  dailyCapUsdc: string;
+  /** What the operator could pay out this instant, after refill. */
+  available: bigint;
+  availableUsdc: string;
+  allowlistRequired: boolean;
+  paused: boolean;
+  /** USDC held by the vault. */
+  balance: bigint;
+  balanceUsdc: string;
+}
+
+export interface VaultPayParams {
+  to: `0x${string}`;
+  amountUsdc: string;
+  /** An opaque tag echoed in the Paid event: a ready 32-byte hash, or any text (hashed for you). */
+  ref?: string;
+}
+
+export interface VaultPayResult extends TxResult {
+  mandateId: bigint;
+}
+
+export type VaultPayCheck = { ok: true } | { ok: false; code: import("./errors.js").MandateErrorCode; message: string };

@@ -1,11 +1,10 @@
 import {
-  BaseError,
-  ContractFunctionRevertedError,
   createPublicClient,
   createWalletClient,
   decodeEventLog,
   http,
   isAddress,
+  type Chain,
   type Hex,
   type PublicClient,
   type TransactionReceipt,
@@ -32,6 +31,7 @@ import type {
   Reputation,
   TxResult,
 } from "./types.js";
+import { TxRunner } from "./tx.js";
 import { formatUsdc, parseUsdc } from "./usdc.js";
 
 const HASH_PATTERN = /^0x[0-9a-fA-F]{64}$/;
@@ -44,6 +44,8 @@ export interface MandateClientOptions {
   publicClient?: PublicClient;
   /** Needed only for writes. Must have an account attached. */
   walletClient?: WalletClient;
+  /** Defaults to Arc mainnet. Pass another viem chain (e.g. Arc testnet) to point the client elsewhere. */
+  chain?: Chain;
   rpcUrl?: string;
   escrowAddress?: `0x${string}`;
   usdcAddress?: `0x${string}`;
@@ -58,19 +60,6 @@ export interface MandateClientOptions {
   approveMax?: boolean;
   receiptPollMs?: number;
   receiptTimeoutMs?: number;
-}
-
-function revertReason(err: unknown): string {
-  if (err instanceof BaseError) {
-    const revert = err.walk((e) => e instanceof ContractFunctionRevertedError);
-    if (revert instanceof ContractFunctionRevertedError && revert.reason) return revert.reason;
-    return err.shortMessage;
-  }
-  return err instanceof Error ? err.message : String(err);
-}
-
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 function assertAddress(value: string, label: string): `0x${string}` {
@@ -96,33 +85,38 @@ export class MandateClient {
   readonly usdcDecimals: number;
   private readonly maxAmount: bigint | null;
   private readonly approveMax: boolean;
-  private readonly receiptPollMs: number;
-  private readonly receiptTimeoutMs: number;
+  private readonly tx: TxRunner;
+  private readonly chain: Chain;
 
   constructor(options: MandateClientOptions = {}) {
     this.escrowAddress = options.escrowAddress ?? ARC_MAINNET.mandateEscrowAddress;
     this.usdcAddress = options.usdcAddress ?? ARC_MAINNET.usdcAddress;
     this.usdcDecimals = options.usdcDecimals ?? ARC_MAINNET.usdcDecimals;
+    this.chain = options.chain ?? arcMainnetChain;
     this.publicClient =
       options.publicClient ??
       (createPublicClient({
-        chain: arcMainnetChain,
-        transport: http(options.rpcUrl ?? ARC_MAINNET.rpcUrl),
+        chain: this.chain,
+        transport: http(options.rpcUrl ?? this.chain.rpcUrls.default.http[0]),
       }) as PublicClient);
     this.walletClient = options.walletClient;
     this.maxAmount = options.maxAmountUsdc !== undefined ? parseUsdc(options.maxAmountUsdc, this.usdcDecimals) : null;
     this.approveMax = options.approveMax ?? false;
-    this.receiptPollMs = options.receiptPollMs ?? 2000;
-    this.receiptTimeoutMs = options.receiptTimeoutMs ?? 120_000;
+    this.tx = new TxRunner(this.publicClient, {
+      explorerUrl: this.chain.blockExplorers?.default.url ?? ARC_MAINNET.explorerUrl,
+      receiptPollMs: options.receiptPollMs ?? 2000,
+      receiptTimeoutMs: options.receiptTimeoutMs ?? 120_000,
+    });
   }
 
   /** Read-write client from a raw private key. Use a dedicated, low-balance wallet for agents. */
   static fromPrivateKey(privateKey: Hex, options: Omit<MandateClientOptions, "walletClient"> = {}): MandateClient {
     const account = privateKeyToAccount(privateKey);
+    const chain = options.chain ?? arcMainnetChain;
     const walletClient = createWalletClient({
       account,
-      chain: arcMainnetChain,
-      transport: http(options.rpcUrl ?? ARC_MAINNET.rpcUrl),
+      chain,
+      transport: http(options.rpcUrl ?? chain.rpcUrls.default.http[0]),
     });
     return new MandateClient({ ...options, walletClient });
   }
@@ -133,7 +127,7 @@ export class MandateClient {
   }
 
   explorerTxUrl(hash: Hex): string {
-    return `${ARC_MAINNET.explorerUrl}/tx/${hash}`;
+    return this.tx.explorerTxUrl(hash);
   }
 
   // ---------------------------------------------------------------- reads
@@ -252,7 +246,7 @@ export class MandateClient {
 
     const approval = await this.approveIfNeeded(amount);
 
-    const { hash, receipt } = await this.send(wallet.client, () =>
+    const { hash, receipt } = await this.tx.send(wallet.client, () =>
       this.publicClient.simulateContract({
         address: this.escrowAddress,
         abi: mandateEscrowAbi,
@@ -290,7 +284,7 @@ export class MandateClient {
       proofHash = proof.hash;
     }
 
-    const { hash } = await this.send(wallet.client, () =>
+    const { hash } = await this.tx.send(wallet.client, () =>
       this.publicClient.simulateContract({
         address: this.escrowAddress,
         abi: mandateEscrowAbi,
@@ -327,7 +321,7 @@ export class MandateClient {
     }
     const { destinations, amounts } = resolveSplits(splits, mandate.amount, this.usdcDecimals);
 
-    const { hash } = await this.send(wallet.client, () =>
+    const { hash } = await this.tx.send(wallet.client, () =>
       this.publicClient.simulateContract({
         address: this.escrowAddress,
         abi: mandateEscrowAbi,
@@ -353,7 +347,7 @@ export class MandateClient {
       throw new MandateError("DEADLINE_NOT_REACHED", `Mandate #${mandate.id} cannot be refunded before ${new Date(mandate.deadline * 1000).toISOString()}.`);
     }
 
-    const { hash } = await this.send(wallet.client, () =>
+    const { hash } = await this.tx.send(wallet.client, () =>
       this.publicClient.simulateContract({
         address: this.escrowAddress,
         abi: mandateEscrowAbi,
@@ -376,7 +370,7 @@ export class MandateClient {
     });
     if (allowance >= amount) return null;
 
-    const { hash } = await this.send(wallet.client, () =>
+    const { hash } = await this.tx.send(wallet.client, () =>
       this.publicClient.simulateContract({
         address: this.usdcAddress,
         abi: erc20Abi,
@@ -430,42 +424,5 @@ export class MandateClient {
       }
     }
     return null;
-  }
-
-  private async send(
-    wallet: WalletClient,
-    simulate: () => Promise<{ request: unknown }>
-  ): Promise<{ hash: Hex; receipt: TransactionReceipt }> {
-    let request: unknown;
-    try {
-      ({ request } = await simulate());
-    } catch (err) {
-      throw new MandateError("CONTRACT_REVERT", `The contract would reject this call: ${revertReason(err)}`);
-    }
-    const hash = await wallet.writeContract(request as Parameters<WalletClient["writeContract"]>[0]);
-    const receipt = await this.waitForReceipt(hash);
-    return { hash, receipt };
-  }
-
-  private async waitForReceipt(hash: Hex): Promise<TransactionReceipt> {
-    const stopAt = Date.now() + this.receiptTimeoutMs;
-    for (;;) {
-      let receipt: TransactionReceipt | null = null;
-      try {
-        receipt = await this.publicClient.getTransactionReceipt({ hash });
-      } catch {
-        // Not indexed yet (or a transient RPC error): keep polling until the timeout.
-      }
-      if (receipt) {
-        if (receipt.status === "reverted") {
-          throw new MandateError("TX_REVERTED", `Transaction ${hash} was mined but reverted.`);
-        }
-        return receipt;
-      }
-      if (Date.now() >= stopAt) {
-        throw new MandateError("RECEIPT_TIMEOUT", `No receipt for ${hash} after ${this.receiptTimeoutMs} ms. It may still confirm; check ${this.explorerTxUrl(hash)}.`);
-      }
-      await sleep(this.receiptPollMs);
-    }
   }
 }

@@ -13,7 +13,12 @@ export type MandateErrorCode =
   | "CONTRACT_REVERT"
   | "TX_REVERTED"
   | "RECEIPT_TIMEOUT"
-  | "EVENT_NOT_FOUND";
+  | "EVENT_NOT_FOUND"
+  | "PAUSED"
+  | "OVER_PER_PAYMENT_CAP"
+  | "OVER_DAILY_ALLOWANCE"
+  | "PAYEE_NOT_ALLOWED"
+  | "INVALID_PAYEE";
 
 /** Every failure the SDK raises on purpose, with a stable `code` callers (and agents) can branch on. */
 export class MandateError extends Error {

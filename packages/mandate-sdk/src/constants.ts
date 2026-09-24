@@ -52,3 +52,56 @@ export const ZERO_HASH = `0x${"00".repeat(32)}` as const;
 /** Contract enum order: None, Funded, Fulfilled, Released, Refunded. */
 export const MANDATE_STATUSES = ["None", "Funded", "Fulfilled", "Released", "Refunded"] as const;
 export type MandateStatus = (typeof MANDATE_STATUSES)[number];
+
+export const ARC_TESTNET = {
+  chainId: 5042002,
+  name: "Arc Testnet",
+  rpcUrl: "https://rpc.testnet.arc.network",
+  explorerUrl: "https://testnet.arcscan.app",
+  usdcAddress: "0x3600000000000000000000000000000000000000",
+  usdcDecimals: 6,
+} as const;
+
+export const arcTestnetChain = defineChain({
+  id: ARC_TESTNET.chainId,
+  name: ARC_TESTNET.name,
+  nativeCurrency: { name: "USDC", symbol: "USDC", decimals: 18 },
+  rpcUrls: { default: { http: [ARC_TESTNET.rpcUrl] } },
+  blockExplorers: { default: { name: "Arc Testnet Explorer", url: ARC_TESTNET.explorerUrl } },
+});
+
+export const agentVaultAbi = parseAbi([
+  "struct Policy { address owner; address operator; address guardian; uint256 perPaymentCap; uint256 dailyCap; uint256 available; bool allowlistRequired; bool paused; uint256 balance; }",
+  "function usdc() view returns (address)",
+  "function escrow() view returns (address)",
+  "function owner() view returns (address)",
+  "function pendingOwner() view returns (address)",
+  "function operator() view returns (address)",
+  "function guardian() view returns (address)",
+  "function perPaymentCap() view returns (uint256)",
+  "function dailyCap() view returns (uint256)",
+  "function allowlistRequired() view returns (bool)",
+  "function isAllowedPayee(address) view returns (bool)",
+  "function paused() view returns (bool)",
+  "function availableNow() view returns (uint256)",
+  "function policy() view returns (Policy)",
+  "function pay(address to, uint256 amount, bytes32 ref) returns (uint256 mandateId)",
+  "function withdraw(address to, uint256 amount)",
+  "function setOperator(address newOperator)",
+  "function setGuardian(address newGuardian)",
+  "function setLimits(uint256 newPerPaymentCap, uint256 newDailyCap)",
+  "function setAllowlistRequired(bool required)",
+  "function setPayee(address payee, bool allowed)",
+  "function setPayees(address[] payees, bool allowed)",
+  "function pause()",
+  "function unpause()",
+  "function transferOwnership(address newOwner)",
+  "function acceptOwnership()",
+  "event Paid(address indexed operator, address indexed to, uint256 amount, uint256 indexed mandateId, bytes32 ref)",
+  "event Withdrawn(address indexed to, uint256 amount)",
+  "event OperatorSet(address indexed operator)",
+  "event GuardianSet(address indexed guardian)",
+  "event LimitsSet(uint256 perPaymentCap, uint256 dailyCap)",
+  "event AllowlistRequiredSet(bool required)",
+  "event PayeeSet(address indexed payee, bool allowed)",
+]);

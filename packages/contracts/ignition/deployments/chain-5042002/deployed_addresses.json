@@ -1,3 +1,5 @@
 {
-  "ObligationEscrowModule#ObligationEscrow": "0xe0eBEadD3774319bFFdB9e2C03B44617781e6f36"
+  "ObligationEscrowModule#ObligationEscrow": "0xe0eBEadD3774319bFFdB9e2C03B44617781e6f36",
+  "MandateEscrowModule#MandateEscrow": "0xe57B47DC952eDFFfd397bf682282b0f6a8C3d983",
+  "AgentVaultModule#AgentVault": "0xE831B474C1ee2E928eeF5a48cC9431B399d8073b"
 }

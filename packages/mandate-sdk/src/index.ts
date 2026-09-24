@@ -1,7 +1,10 @@
 export { MandateClient, type MandateClientOptions } from "./client.js";
 export {
   ARC_MAINNET,
+  ARC_TESTNET,
+  agentVaultAbi,
   arcMainnetChain,
+  arcTestnetChain,
   erc20Abi,
   mandateEscrowAbi,
   MANDATE_STATUSES,
@@ -17,5 +20,10 @@ export type {
   ProofInput,
   Reputation,
   TxResult,
+  VaultPayCheck,
+  VaultPayParams,
+  VaultPayResult,
+  VaultPolicy,
 } from "./types.js";
 export { formatUsdc, parseUsdc } from "./usdc.js";
+export { VaultClient, type VaultClientOptions } from "./vault.js";
