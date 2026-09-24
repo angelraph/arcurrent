@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { useAccount, useConnect, useDisconnect, useReadContract, useSwitchChain, useWriteContract } from "wagmi";
 import { waitForTransactionReceipt } from "wagmi/actions";
 import { decodeEventLog, isAddress, keccak256, parseAbi, parseUnits, stringToHex, formatUnits } from "viem";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { arcMainnet, MANDATE_ESCROW_ADDRESS, USDC_ADDRESS, USDC_DECIMALS, wagmiConfig } from "@/lib/wagmi-config";
 
@@ -41,7 +42,7 @@ function shortErrorMessage(err: unknown): string {
   return err instanceof Error ? err.message.split("\n")[0] : "Transaction failed or was rejected.";
 }
 
-function ConnectGate({ children }: { children: React.ReactNode }) {
+export function ConnectGate({ children }: { children: React.ReactNode }) {
   const { isConnected, chainId } = useAccount();
   const { connect, connectors, isPending, error } = useConnect();
   const { switchChain, isPending: switching, error: switchError } = useSwitchChain();
@@ -106,7 +107,7 @@ function ConnectGate({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
-function AccountBar() {
+export function AccountBar() {
   const { address } = useAccount();
   const { disconnect } = useDisconnect();
   const { data: balance } = useReadContract({
@@ -157,12 +158,26 @@ function TxResult({ state }: { state: TxState }) {
   );
 }
 
-function CreateMandateForm({ onCreated }: { onCreated: (id: bigint) => void }) {
+export interface CreateMandatePreset {
+  fulfiller: string;
+  amount: string;
+  deadlineDays: string;
+}
+
+/** `preset` locks all three fields to a payment request's values (see /request); without it the form is free-entry. */
+export function CreateMandateForm({
+  onCreated,
+  preset,
+}: {
+  onCreated: (id: bigint) => void;
+  preset?: CreateMandatePreset;
+}) {
   const { address } = useAccount();
   const router = useRouter();
-  const [fulfiller, setFulfiller] = useState("");
-  const [amount, setAmount] = useState("");
-  const [deadlineDays, setDeadlineDays] = useState("");
+  const [fulfiller, setFulfiller] = useState(preset?.fulfiller ?? "");
+  const [amount, setAmount] = useState(preset?.amount ?? "");
+  const [deadlineDays, setDeadlineDays] = useState(preset?.deadlineDays ?? "");
+  const locked = !!preset;
   const [state, setState] = useState<TxState>({});
   const [step, setStep] = useState<"idle" | "approving" | "creating">("idle");
   const { writeContractAsync } = useWriteContract();
@@ -270,9 +285,11 @@ function CreateMandateForm({ onCreated }: { onCreated: (id: bigint) => void }) {
         txHash: createHash,
       });
       if (mandateId !== null) onCreated(mandateId);
-      setFulfiller("");
-      setAmount("");
-      setDeadlineDays("");
+      if (!locked) {
+        setFulfiller("");
+        setAmount("");
+        setDeadlineDays("");
+      }
       router.refresh();
     } catch (err) {
       setState({ error: shortErrorMessage(err) });
@@ -288,6 +305,7 @@ function CreateMandateForm({ onCreated }: { onCreated: (id: bigint) => void }) {
         <input
           value={fulfiller}
           onChange={(e) => setFulfiller(e.target.value)}
+          readOnly={locked}
           placeholder="0x… or leave blank"
           className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm font-mono outline-none focus:border-accent"
         />
@@ -297,6 +315,7 @@ function CreateMandateForm({ onCreated }: { onCreated: (id: bigint) => void }) {
         <input
           value={amount}
           onChange={(e) => setAmount(e.target.value)}
+          readOnly={locked}
           type="number"
           step="0.000001"
           min="0"
@@ -309,6 +328,7 @@ function CreateMandateForm({ onCreated }: { onCreated: (id: bigint) => void }) {
         <input
           value={deadlineDays}
           onChange={(e) => setDeadlineDays(e.target.value)}
+          readOnly={locked}
           type="number"
           min="1"
           className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm font-mono outline-none focus:border-accent"
@@ -403,7 +423,7 @@ function ManageMandateForm({ initialMandateId }: { initialMandateId?: bigint }) 
   return (
     <div className="flex flex-col gap-3">
       {autoLoaded && (
-        <p className="text-xs text-accent">Loaded automatically: the mandate you just created.</p>
+        <p className="text-xs text-accent">Loaded automatically.</p>
       )}
       <form onSubmit={loadMandate} className="flex items-end gap-2">
         <label className="flex-1 text-xs font-medium text-muted">
@@ -519,8 +539,11 @@ function ManageMandateForm({ initialMandateId }: { initialMandateId?: bigint }) 
   );
 }
 
-export function WalletMandatePanel() {
-  const [justCreatedId, setJustCreatedId] = useState<bigint | null>(null);
+/** `initialMandateId` comes from a ?mandate=N deep link (see /mandate/[id]) and loads that mandate straight into Manage. */
+export function WalletMandatePanel({ initialMandateId }: { initialMandateId?: string }) {
+  const [justCreatedId, setJustCreatedId] = useState<bigint | null>(
+    initialMandateId && /^\d{1,15}$/.test(initialMandateId) ? BigInt(initialMandateId) : null
+  );
   return (
     <section className="flex flex-col gap-3 rounded-xl border-2 border-accent bg-surface p-5 shadow-sm">
       <div className="flex flex-col gap-1">
@@ -528,7 +551,10 @@ export function WalletMandatePanel() {
         <p className="text-xs text-muted">
           This doesn&apos;t touch Arcurrent&apos;s treasury. Connect your own wallet and fund a mandate with
           your own USDC on Arc mainnet · the same open, permissionless contract Arcurrent&apos;s own agent
-          uses below, available to anyone.
+          uses below, available to anyone.{" "}
+          <Link href="/request" className="text-accent underline">
+            Want to get paid? Create a payment request link.
+          </Link>
         </p>
       </div>
       <ConnectGate>

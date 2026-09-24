@@ -47,6 +47,35 @@ export interface MandateReputation {
 
 const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
 
+type MandateRow = readonly [`0x${string}`, `0x${string}`, bigint, bigint, `0x${string}`, number];
+
+/** Pure row-to-Mandate mapping shared by the list and single-mandate readers; exported for tests. */
+export function toMandate(id: number, row: MandateRow, usdcDecimals: number): Mandate {
+  const [funder, fulfiller, amount, deadline, proofHash, status] = row;
+  return {
+    id,
+    funder,
+    fulfiller,
+    amountUsdc: Number(amount) / 10 ** usdcDecimals,
+    deadline: deadline === 0n ? null : Number(deadline),
+    proofHash,
+    status: MANDATE_STATUS_NAMES[status] ?? "None",
+  };
+}
+
+/** One mandate by id, or null if that id was never created (the contract returns an all-zero row, status None). */
+export async function getMandate(escrowAddress: `0x${string}`, id: number): Promise<Mandate | null> {
+  const network = getActiveArcNetwork();
+  const row = await arcPublicClient.readContract({
+    address: escrowAddress,
+    abi: mandateEscrowAbi,
+    functionName: "mandates",
+    args: [BigInt(id)],
+  });
+  const mandate = toMandate(id, row, network.usdcErc20Decimals);
+  return mandate.status === "None" ? null : mandate;
+}
+
 /**
  * Reads every mandate directly (nextMandateId(), then one `mandates(id)`
  * read per id) rather than scanning event logs for MandateCreated. That
@@ -74,17 +103,7 @@ export async function getMandates(escrowAddress: `0x${string}`): Promise<Mandate
     )
   );
 
-  return rows
-    .map(([funder, fulfiller, amount, deadline, proofHash, status], id) => ({
-      id,
-      funder,
-      fulfiller,
-      amountUsdc: Number(amount) / 10 ** network.usdcErc20Decimals,
-      deadline: deadline === 0n ? null : Number(deadline),
-      proofHash,
-      status: MANDATE_STATUS_NAMES[status] ?? "None",
-    }))
-    .reverse();
+  return rows.map((row, id) => toMandate(id, row, network.usdcErc20Decimals)).reverse();
 }
 
 /** Null fulfiller (never assigned, e.g. an open mandate nobody has touched yet) has no reputation to read. */

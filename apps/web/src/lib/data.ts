@@ -1,5 +1,6 @@
 import "server-only";
 import {
+  getMandate,
   getMandateReputation,
   getMandates,
   getSupabaseServerClient,
@@ -117,4 +118,43 @@ export async function getMandatesWithReputation(): Promise<MandateWithReputation
   );
 
   return mandates.map((m, i) => ({ ...m, fulfillerReputation: reputations[i] }));
+}
+
+function getEscrowAddress(): `0x${string}` | undefined {
+  return process.env.MANDATE_ESCROW_ADDRESS as `0x${string}` | undefined;
+}
+
+/** null when the id was never created (or MANDATE_ESCROW_ADDRESS isn't configured). */
+export async function getMandateById(id: number): Promise<MandateWithReputation | null> {
+  const escrowAddress = getEscrowAddress();
+  if (!escrowAddress) return null;
+
+  const mandate = await getMandate(escrowAddress, id);
+  if (!mandate) return null;
+  return { ...mandate, fulfillerReputation: await getMandateReputation(escrowAddress, mandate.fulfiller) };
+}
+
+export interface AddressProfile {
+  address: `0x${string}`;
+  reputation: MandateReputation | null;
+  asFunder: Mandate[];
+  asFulfiller: Mandate[];
+}
+
+/** Everything the contract knows about one address: its reputation ledger entry and every mandate it appears in. */
+export async function getAddressProfile(address: `0x${string}`): Promise<AddressProfile | null> {
+  const escrowAddress = getEscrowAddress();
+  if (!escrowAddress) return null;
+
+  const [reputation, mandates] = await Promise.all([
+    getMandateReputation(escrowAddress, address),
+    getMandates(escrowAddress),
+  ]);
+  const same = (a: string) => a.toLowerCase() === address.toLowerCase();
+  return {
+    address,
+    reputation,
+    asFunder: mandates.filter((m) => same(m.funder)),
+    asFulfiller: mandates.filter((m) => same(m.fulfiller)),
+  };
 }

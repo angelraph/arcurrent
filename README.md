@@ -110,7 +110,8 @@ mainnet**:
   route (`apps/web/src/app/api/cron/evaluate`, for it to actually run autonomously
   once deployed, see `apps/web/vercel.json`). The route fails closed on a
   missing/wrong `CRON_SECRET`, since a real hit here moves real USDC.
-- `MandateEscrow.sol` (`packages/contracts`, deployed and verified on Arc mainnet,
+- `MandateEscrow.sol` (`packages/contracts`, deployed on Arc mainnet with its
+  [source verified on the explorer](https://explorer.arc.io/address/0xca901f58fb82FE5FF459264a419b8cF8c75b3371?tab=contract),
   unit-tested with a mock USDC in an isolated local EVM) is the open primitive: any
   address can fund a mandate for anyone (or leave it open), a fulfiller posts proof,
   the funder releases atomically with an optional multi-destination split, refund on
@@ -194,6 +195,13 @@ const mandateId = await wallet.writeContract({ address: ESCROW, abi: mandateEscr
 // 3. the funder releases -- atomically, to one or more destinations
 // await wallet.writeContract({ address: ESCROW, abi: mandateEscrowAbi, functionName: "release", args: [mandateId, [fulfillerAddr, feeAddr], [mostOfIt, smallFee]] });
 ```
+
+Every mandate and every address also has a shareable page on the live site, read straight
+from the contract: `/mandate/<id>` (state, terms, a proof verifier that re-hashes evidence
+against the on-chain hash) and `/address/<0x…>` (an address's reputation and every mandate
+it appears in). `/request` generates a payment-request link: put in your address and an
+amount, send the link, and whoever opens it can lock that USDC in escrow for you in one
+click, with the recipient and amount shown before they sign.
 
 No registration, no allowlist, no fee to this project. `scripts/mandate-demo.ts` and
 `scripts/mandate-split-demo.ts` run the full cycles (single payout, and an atomic

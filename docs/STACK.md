@@ -69,6 +69,23 @@ if a build breaks against a listed version.
   a retry loop (see `waitForReceipt()` in `scripts/mandate-split-demo.ts`) instead of
   relying on `waitForTransactionReceipt`.
 
+## Verifying contract source on Arc's explorer (2026-09-24)
+
+`explorer.arc.io` is Blockscout behind a Cloudflare bot check: `curl`, Node `fetch` and
+`hardhat verify` all get the challenge page instead of the API, so scripted verification
+does not work. It does work from a normal browser session against the explorer's own API:
+`POST /api/v2/smart-contracts/<addr>/verification/via/standard-input` (multipart:
+`compiler_version` as `v0.8.28+commit.7893614a`, `contract_name`, `license_type`,
+`autodetect_constructor_args=false`, `constructor_args` as the 32-byte-padded USDC
+precompile address, and `files[0]` = the Standard JSON input).
+
+Use the `input` object saved in
+`packages/contracts/ignition/deployments/chain-5042/build-info/*.json`, not a fresh
+compile of the current source: it is the exact compiler input that produced the deployed
+bytecode, so it verifies as a full match (the SPDX header was changed from UNLICENSED to
+MIT after deployment, which alters the metadata hash of a fresh compile). Verified for
+`MandateEscrow` at `0xca901f58fb82FE5FF459264a419b8cF8c75b3371`; `is_fully_verified: true`.
+
 ## Security self-review: MandateEscrow.sol (2026-09-23)
 
 No professional audit -- out of scope/budget for a microgrant-stage submission -- but

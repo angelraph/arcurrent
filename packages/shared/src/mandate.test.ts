@@ -1,6 +1,6 @@
 import { encodeEventTopics, encodeAbiParameters, parseAbi, type Log } from "viem";
 import { describe, expect, it } from "vitest";
-import { findMandateIdFromCreatedLogs } from "./mandate.js";
+import { findMandateIdFromCreatedLogs, toMandate } from "./mandate.js";
 
 const eventAbi = parseAbi([
   "event MandateCreated(uint256 indexed mandateId, address indexed funder, address indexed fulfiller, uint256 amount, uint256 deadline)",
@@ -73,5 +73,34 @@ describe("findMandateIdFromCreatedLogs", () => {
 
   it("returns null when no matching log is present", () => {
     expect(findMandateIdFromCreatedLogs([], funder)).toBeNull();
+  });
+});
+
+describe("toMandate", () => {
+  const funder = "0x1111111111111111111111111111111111111111" as const;
+  const fulfiller = "0x2222222222222222222222222222222222222222" as const;
+  const proof = `0x${"ab".repeat(32)}` as const;
+
+  it("scales the raw amount by the USDC decimals and names the status", () => {
+    const m = toMandate(3, [funder, fulfiller, 60000n, 1_800_000_000n, proof, 3], 6);
+    expect(m).toEqual({
+      id: 3,
+      funder,
+      fulfiller,
+      amountUsdc: 0.06,
+      deadline: 1_800_000_000,
+      proofHash: proof,
+      status: "Released",
+    });
+  });
+
+  it("maps a zero deadline to null (no refund path)", () => {
+    expect(toMandate(0, [funder, fulfiller, 1n, 0n, proof, 1], 6).deadline).toBeNull();
+  });
+
+  it("reports status None for the contract's all-zero row of a never-created id", () => {
+    const zero = "0x0000000000000000000000000000000000000000" as const;
+    const empty = `0x${"00".repeat(32)}` as const;
+    expect(toMandate(99, [zero, zero, 0n, 0n, empty, 0], 6).status).toBe("None");
   });
 });

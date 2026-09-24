@@ -6,6 +6,7 @@ import {
   getTreasuryBalance,
   type TreasuryBalances,
 } from "@/lib/data";
+import Link from "next/link";
 import { formatUsdc } from "@/lib/format";
 import { Nav } from "../../nav";
 import { ObligationForm } from "../../obligation-form";
@@ -25,7 +26,13 @@ export const maxDuration = 60;
 
 const emptyBalance: TreasuryBalances = { walletUsdc: null };
 
-export default async function DashboardPage() {
+export default async function DashboardPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ mandate?: string | string[] }>;
+}) {
+  const { mandate: mandateParam } = await searchParams;
+  const initialMandateId = Array.isArray(mandateParam) ? mandateParam[0] : mandateParam;
   const network = getActiveArcNetwork();
   // Promise.allSettled, not Promise.all: a real transient failure in one
   // panel's data (RPC blip, Circle rate limit, Supabase hiccup) shouldn't
@@ -76,7 +83,7 @@ export default async function DashboardPage() {
           project's* treasury, not their own. That's backwards: the open,
           self-serve path should be what people reach for first.
         */}
-        <WalletMandatePanel />
+        <WalletMandatePanel initialMandateId={initialMandateId} />
 
         <section className="rounded-xl border border-border bg-surface p-5 shadow-sm">
           <h2 className="text-xs font-semibold uppercase tracking-wide text-muted">
@@ -244,13 +251,13 @@ export default async function DashboardPage() {
                 {mandates.map((m) => (
                   <div key={m.id} className="rounded-xl border border-border bg-surface p-4 text-sm shadow-sm">
                     <div className="flex items-center justify-between gap-2">
-                      <span className="font-mono text-muted">#{m.id}</span>
+                      <Link href={`/mandate/${m.id}`} className="font-mono text-accent hover:underline">#{m.id}</Link>
                       <MandateStatusPill status={m.status} />
                     </div>
                     <p className="mt-1 font-mono">${formatUsdc(m.amountUsdc)}</p>
                     <p className="mt-1 text-xs text-muted">
-                      funder <span title={m.funder}>{shortAddress(m.funder)}</span> → fulfiller{" "}
-                      {/^0x0+$/.test(m.fulfiller) ? "open · unclaimed" : <span title={m.fulfiller}>{shortAddress(m.fulfiller)}</span>}
+                      funder <Link href={`/address/${m.funder}`} title={m.funder} className="hover:text-foreground hover:underline">{shortAddress(m.funder)}</Link> → fulfiller{" "}
+                      {/^0x0+$/.test(m.fulfiller) ? "open · unclaimed" : <Link href={`/address/${m.fulfiller}`} title={m.fulfiller} className="hover:text-foreground hover:underline">{shortAddress(m.fulfiller)}</Link>}
                     </p>
                     <p className="mt-1 text-xs text-muted">
                       {m.fulfillerReputation
@@ -276,15 +283,15 @@ export default async function DashboardPage() {
                   <tbody>
                     {mandates.map((m) => (
                       <tr key={m.id} className="border-b border-border last:border-0">
-                        <td className="px-4 py-3 font-mono text-muted">{m.id}</td>
+                        <td className="px-4 py-3 font-mono"><Link href={`/mandate/${m.id}`} className="text-accent hover:underline">{m.id}</Link></td>
                         <td className="px-4 py-3 font-mono" title={m.funder}>
-                          {shortAddress(m.funder)}
+                          <Link href={`/address/${m.funder}`} className="hover:underline">{shortAddress(m.funder)}</Link>
                         </td>
                         <td className="px-4 py-3 font-mono" title={m.fulfiller}>
                           {/^0x0+$/.test(m.fulfiller) ? (
                             <span className="text-muted">open · unclaimed</span>
                           ) : (
-                            shortAddress(m.fulfiller)
+                            <Link href={`/address/${m.fulfiller}`} className="hover:underline">{shortAddress(m.fulfiller)}</Link>
                           )}
                         </td>
                         <td className="px-4 py-3 font-mono">${formatUsdc(m.amountUsdc)}</td>
