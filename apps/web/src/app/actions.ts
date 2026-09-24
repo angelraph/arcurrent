@@ -34,6 +34,40 @@ export async function createObligation(
   _prevState: CreateObligationState,
   formData: FormData
 ): Promise<CreateObligationState> {
+  const supabase = getSupabaseServerClient();
+  const ip = await getClientIp();
+
+  // Checked first, before even looking at the owner passcode, so a wrong
+  // guess also burns the cooldown window instead of being instantly
+  // retryable -- otherwise the passcode has no real brute-force protection,
+  // since nothing else in this form rate-limits failed attempts specifically.
+  if (ip !== "unknown") {
+    const { data: recent, error: cooldownError } = await supabase
+      .from("obligation_submissions")
+      .select("created_at")
+      .eq("ip", ip)
+      .order("created_at", { ascending: false })
+      .limit(1);
+    if (cooldownError) {
+      console.error("Obligation cooldown lookup failed:", cooldownError);
+      // Fail open on the cooldown check itself -- an unrelated Supabase
+      // hiccup here shouldn't block a legitimate submission.
+    } else if (recent?.[0]) {
+      const elapsedMs = Date.now() - new Date(recent[0].created_at).getTime();
+      if (elapsedMs < SUBMISSION_COOLDOWN_MS) {
+        const retrySeconds = Math.ceil((SUBMISSION_COOLDOWN_MS - elapsedMs) / 1000);
+        return { error: `Please wait ${retrySeconds}s before trying again.` };
+      }
+    }
+
+    const { error: recordError } = await supabase.from("obligation_submissions").insert({ ip });
+    if (recordError) {
+      // Not fatal -- a failure to log the cooldown marker just means this
+      // IP isn't rate-limited for one cycle, not that anything failed.
+      console.error("Failed to record obligation attempt for cooldown:", recordError);
+    }
+  }
+
   const ownerSecret = process.env.OWNER_SECRET;
   if (!ownerSecret) {
     return { error: "OWNER_SECRET is not configured; this form is locked until it is." };
@@ -59,29 +93,6 @@ export async function createObligation(
     return { error: "Destination address must be a valid 0x-prefixed EVM address." };
   }
 
-  const supabase = getSupabaseServerClient();
-  const ip = await getClientIp();
-
-  if (ip !== "unknown") {
-    const { data: recent, error: cooldownError } = await supabase
-      .from("obligation_submissions")
-      .select("created_at")
-      .eq("ip", ip)
-      .order("created_at", { ascending: false })
-      .limit(1);
-    if (cooldownError) {
-      console.error("Obligation cooldown lookup failed:", cooldownError);
-      // Fail open on the cooldown check itself -- an unrelated Supabase
-      // hiccup here shouldn't block a legitimate submission.
-    } else if (recent?.[0]) {
-      const elapsedMs = Date.now() - new Date(recent[0].created_at).getTime();
-      if (elapsedMs < SUBMISSION_COOLDOWN_MS) {
-        const retrySeconds = Math.ceil((SUBMISSION_COOLDOWN_MS - elapsedMs) / 1000);
-        return { error: `Please wait ${retrySeconds}s before adding another obligation.` };
-      }
-    }
-  }
-
   const { error } = await supabase.from("obligations").insert({
     vendor_name: vendorName,
     amount,
@@ -92,16 +103,6 @@ export async function createObligation(
   });
 
   if (error) return { error: error.message };
-
-  if (ip !== "unknown") {
-    const { error: recordError } = await supabase.from("obligation_submissions").insert({ ip });
-    if (recordError) {
-      // The obligation is already saved -- a failure to log the cooldown
-      // marker just means this IP isn't rate-limited for one cycle, not
-      // that anything the user did failed.
-      console.error("Failed to record obligation submission for cooldown:", recordError);
-    }
-  }
 
   // Evaluate right away instead of waiting for the next cron tick (up to 24h
   // on the Hobby plan), the same evaluatePendingObligations() the cron
