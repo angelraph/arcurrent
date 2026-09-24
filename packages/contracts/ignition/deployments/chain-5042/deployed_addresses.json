@@ -1,3 +1,4 @@
 {
-  "MandateEscrowModule#MandateEscrow": "0xca901f58fb82FE5FF459264a419b8cF8c75b3371"
+  "MandateEscrowModule#MandateEscrow": "0xca901f58fb82FE5FF459264a419b8cF8c75b3371",
+  "AgentVaultModule#AgentVault": "0x8B4e7F295Ed70DA321831bA34cd0C84443C427B5"
 }
