@@ -93,10 +93,10 @@ export function RailDiagram() {
 
           {/* connectors */}
           <g fill="none" stroke="var(--accent)" strokeWidth={1.5}>
-            <path d="M170 70 H205 V190 H245" markerEnd="url(#rail-arrow)" />
+            <path className="rail-flow" d="M170 70 H205 V190 H245" markerEnd="url(#rail-arrow)" />
             <path d="M170 330 H205 V225 H245" markerEnd="url(#rail-arrow)" strokeDasharray="5 4" />
-            <path d="M395 205 H470" markerEnd="url(#rail-arrow)" />
-            <path d="M545 260 V318" markerEnd="url(#rail-arrow)" />
+            <path className="rail-flow" d="M395 205 H470" markerEnd="url(#rail-arrow)" />
+            <path className="rail-flow" d="M545 260 V318" markerEnd="url(#rail-arrow)" />
           </g>
           <path d="M545 150 V96" fill="none" stroke="var(--rule)" strokeWidth={1.5} strokeDasharray="3 4" markerEnd="url(#rail-arrow)" />
 

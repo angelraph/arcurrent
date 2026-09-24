@@ -1,4 +1,5 @@
-import { getMandatesWithReputation } from "@/lib/data";
+import { getActiveArcNetwork } from "@arcurrent/shared";
+import { getMandatesWithReputation, getRecentDecisions } from "@/lib/data";
 import { formatUsdc } from "@/lib/format";
 import { Hero } from "../hero";
 import {
@@ -10,6 +11,7 @@ import {
   WhyArc,
   type LiveStats,
 } from "../landing-sections";
+import { LiveLedger, type LedgerData } from "../live-ledger";
 import { Nav } from "../nav";
 import { Faq, Roadmap } from "../roadmap-faq";
 
@@ -29,8 +31,27 @@ async function readLiveStats(): Promise<LiveStats | null> {
   }
 }
 
+async function readLedger(): Promise<LedgerData | null> {
+  try {
+    const [mandates, decisions] = await Promise.all([
+      getMandatesWithReputation().catch(() => []),
+      getRecentDecisions(20).catch(() => []),
+    ]);
+    return {
+      explorer: getActiveArcNetwork().blockExplorer,
+      mandates: [...mandates].sort((a, b) => b.id - a.id).slice(0, 6),
+      // The agent re-evaluates on a schedule, so identical verdicts repeat; show each distinct one once.
+      decisions: decisions
+        .filter((d, i, all) => all.findIndex((o) => o.obligationId === d.obligationId && o.action === d.action) === i)
+        .slice(0, 4),
+    };
+  } catch {
+    return null;
+  }
+}
+
 export default async function Home() {
-  const stats = await readLiveStats();
+  const [stats, ledger] = await Promise.all([readLiveStats(), readLedger()]);
   return (
     <>
       <Nav />
@@ -38,6 +59,7 @@ export default async function Home() {
         <Hero />
         <LiveStrip stats={stats} />
         <HowItWorks />
+        <LiveLedger data={ledger} />
         <WhyArc />
         <BoundedAutonomy />
         <UnderTheHood />

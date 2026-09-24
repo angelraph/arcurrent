@@ -18,12 +18,10 @@ export function Hero() {
             An open settlement primitive, and the autonomous agent that&apos;s already using it.
           </h1>
           <p className="max-w-xl text-base leading-relaxed text-foreground/85 sm:text-lg">
-            Arcurrent&apos;s treasury agent watches what you owe and decides when it&apos;s safe to pay from real
-            signals. It pays from an on-chain vault it can never withdraw from and can only spend inside limits
-            its owner set, so even leaked credentials are bounded by numbers you chose. Every payment is a
-            mandate on <span className="font-mono text-[0.9em]">MandateEscrow</span>, an open, permissionless
-            contract any address can fund, fulfill, or read. No human clicks approve, and every settlement is
-            real, on Arc mainnet, and independently verifiable on-chain.
+            An agent that pays real invoices on Arc mainnet, from a vault it cannot withdraw from. Its
+            owner sets the limits on-chain, so even a leaked key can only spend what you allowed. Every
+            payment is a mandate on <span className="font-mono text-[0.9em]">MandateEscrow</span>, an open
+            contract anyone can fund, fulfil or read.
           </p>
 
           <ul className="flex flex-wrap gap-x-6 gap-y-3">
