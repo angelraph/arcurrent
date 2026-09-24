@@ -25,7 +25,7 @@ export function CopyAddress({ label, address }: { label: string; address: string
 
   return (
     <div className="flex flex-col gap-1.5 rounded-xl border border-border bg-surface p-5 shadow-sm">
-      <span className="text-xs font-semibold uppercase tracking-wide text-muted">{label}</span>
+      <span className="label-mono">{label}</span>
       <div className="flex items-center gap-2">
         <code className="flex-1 select-all break-all rounded-lg border border-border bg-background px-3 py-2 font-mono text-sm">
           {address}

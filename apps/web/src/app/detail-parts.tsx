@@ -9,7 +9,7 @@ export const ZERO_ADDRESS_PATTERN = /^0x0+$/;
 export function Card({ title, children }: { title?: string; children: React.ReactNode }) {
   return (
     <section className="flex flex-col gap-3 rounded-xl border border-border bg-surface p-5 shadow-sm">
-      {title && <h2 className="text-xs font-semibold uppercase tracking-wide text-muted">{title}</h2>}
+      {title && <h2 className="label-mono">{title}</h2>}
       {children}
     </section>
   );
@@ -18,7 +18,7 @@ export function Card({ title, children }: { title?: string; children: React.Reac
 export function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="flex flex-col gap-0.5 sm:flex-row sm:items-baseline sm:gap-4">
-      <dt className="w-32 shrink-0 text-xs font-medium uppercase tracking-wide text-muted">{label}</dt>
+      <dt className="w-32 shrink-0 label-mono">{label}</dt>
       <dd className="min-w-0 break-words text-sm">{children}</dd>
     </div>
   );

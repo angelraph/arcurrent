@@ -22,7 +22,7 @@ const quietButtonClass =
 function Group({ title, note, children }: { title: string; note?: string; children: React.ReactNode }) {
   return (
     <div className="flex flex-col gap-2 rounded-lg border border-border bg-background p-3">
-      <h3 className="text-xs font-semibold uppercase tracking-wide text-muted">{title}</h3>
+      <h3 className="label-mono">{title}</h3>
       {note && <p className="text-xs text-muted">{note}</p>}
       {children}
     </div>
@@ -46,7 +46,7 @@ export function VaultOwnerPanel() {
   return (
     <section className="flex flex-col gap-3 rounded-xl border border-border bg-surface p-5 shadow-sm">
       <div className="flex flex-col gap-1">
-        <h2 className="text-xs font-semibold uppercase tracking-wide text-muted">Vault owner controls</h2>
+        <h2 className="label-mono">Vault owner controls</h2>
         <p className="text-xs text-muted">
           Only the vault&apos;s owner can change the rules, fund it, or withdraw. Connect the owner wallet to
           use these; anyone else can look but not touch.

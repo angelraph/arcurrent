@@ -74,11 +74,11 @@ export default async function AddressPage({ params }: { params: Promise<{ addr: 
     <div className="flex flex-1 flex-col">
       <Nav />
       <PageShell>
-        <div className="flex flex-col gap-2" style={{ textShadow: "0 1px 4px rgba(0,0,0,0.35)" }}>
+        <div className="flex flex-col gap-2">
           <Link href="/dashboard" className="text-xs text-muted hover:text-foreground">
             ← Dashboard
           </Link>
-          <h1 className="text-2xl font-semibold tracking-tight">Track record</h1>
+          <h1 className="display text-[clamp(26px,3.4vw,36px)]">Track record</h1>
           <code className="break-all font-mono text-xs text-foreground/80">{address}</code>
         </div>
 

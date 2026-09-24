@@ -68,9 +68,9 @@ export default async function DashboardPage({
       <Nav />
 
       <div className="mx-auto flex w-full max-w-4xl flex-col gap-10 px-6 py-12">
-        <div className="flex flex-col gap-1" style={{ textShadow: "0 1px 4px rgba(0,0,0,0.35)" }}>
-          <span className="text-xs font-semibold uppercase tracking-wide text-accent">Live dashboard</span>
-          <h2 className="text-2xl font-semibold tracking-tight">Treasury &amp; obligations</h2>
+        <div className="flex flex-col gap-1">
+          <span className="eyebrow">Live dashboard</span>
+          <h2 className="display text-[clamp(26px,3.4vw,36px)]">Treasury &amp; obligations</h2>
           <p className="text-sm text-foreground/80">Real balances, real obligations, real agent decisions, all on {network.name}.</p>
         </div>
 
@@ -90,7 +90,7 @@ export default async function DashboardPage({
 
         <section className="flex flex-col gap-3">
           <div className="flex flex-col gap-1">
-            <h2 className="text-sm font-semibold uppercase tracking-wide text-muted">Add obligation</h2>
+            <h2 className="label-mono">Add obligation</h2>
             <p className="text-xs text-muted">
               This is this project&apos;s own agent demo · it spends Arcurrent&apos;s treasury above, not
               yours. To try MandateEscrow with your own funds instead, use the panel near the top of this
@@ -101,7 +101,7 @@ export default async function DashboardPage({
         </section>
 
         <section className="flex flex-col gap-3">
-          <h2 className="text-sm font-semibold uppercase tracking-wide text-muted">Obligations</h2>
+          <h2 className="label-mono">Obligations</h2>
           {obligationsUnavailable ? (
             <p className="rounded-xl border border-dashed border-warning p-6 text-center text-sm text-warning">
               Obligations temporarily unavailable. Try refreshing.
@@ -206,7 +206,7 @@ export default async function DashboardPage({
 
         <section className="flex flex-col gap-3">
           <div className="flex flex-col gap-1">
-            <h2 className="text-sm font-semibold uppercase tracking-wide text-muted">Mandates</h2>
+            <h2 className="label-mono">Mandates</h2>
             <p className="text-xs text-muted">
               The general settlement primitive · not a side demo. The treasury agent itself is a live funder
               here: every obligation paid above is created and released as its own mandate on{" "}
@@ -303,7 +303,7 @@ export default async function DashboardPage({
         </section>
 
         <section className="flex flex-col gap-3 pb-8">
-          <h2 className="text-sm font-semibold uppercase tracking-wide text-muted">Agent decision log</h2>
+          <h2 className="label-mono">Agent decision log</h2>
           {decisionsUnavailable ? (
             <p className="rounded-xl border border-dashed border-warning p-6 text-center text-sm text-warning">
               Decision log temporarily unavailable. Try refreshing.

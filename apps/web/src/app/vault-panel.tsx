@@ -8,7 +8,7 @@ const LOW_GAS_USDC = 0.05;
 function Stat({ label, value, hint }: { label: string; value: string; hint?: string }) {
   return (
     <div className="flex flex-col gap-0.5">
-      <dt className="text-xs font-medium uppercase tracking-wide text-muted">{label}</dt>
+      <dt className="label-mono">{label}</dt>
       <dd className="font-mono text-lg font-semibold">{value}</dd>
       {hint && <p className="text-xs text-muted">{hint}</p>}
     </div>
@@ -26,7 +26,7 @@ export function VaultPanel({ vault, unavailable }: { vault: VaultOverview | null
     <section className="flex flex-col gap-4 rounded-xl border border-border bg-surface p-5 shadow-sm">
       <div className="flex flex-col gap-1">
         <div className="flex flex-wrap items-center gap-2">
-          <h2 className="text-xs font-semibold uppercase tracking-wide text-muted">Agent vault</h2>
+          <h2 className="label-mono">Agent vault</h2>
           {vault && (
             <span
               className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${
@@ -83,15 +83,15 @@ export function VaultPanel({ vault, unavailable }: { vault: VaultOverview | null
 
           <dl className="grid grid-cols-1 gap-2 text-xs sm:grid-cols-3">
             <div className="flex flex-col gap-0.5">
-              <dt className="font-medium uppercase tracking-wide text-muted">Owner</dt>
+              <dt className="label-mono">Owner</dt>
               <dd><AddressLink address={vault.owner} /></dd>
             </div>
             <div className="flex flex-col gap-0.5">
-              <dt className="font-medium uppercase tracking-wide text-muted">Agent (operator)</dt>
+              <dt className="label-mono">Agent (operator)</dt>
               <dd><AddressLink address={vault.operator} /></dd>
             </div>
             <div className="flex flex-col gap-0.5">
-              <dt className="font-medium uppercase tracking-wide text-muted">Guardian (can pause)</dt>
+              <dt className="label-mono">Guardian (can pause)</dt>
               <dd>{/^0x0+$/.test(vault.guardian) ? <span className="text-muted">none</span> : <AddressLink address={vault.guardian} />}</dd>
             </div>
           </dl>

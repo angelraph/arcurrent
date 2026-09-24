@@ -1,48 +1,62 @@
 import Link from "next/link";
+import { RailDiagram } from "./rail-diagram";
+
+const CAPABILITIES = [
+  { title: "Open contract", sub: "Source verified on the explorer" },
+  { title: "Bounded agent", sub: "Limits it can never exceed" },
+  { title: "SDK and MCP", sub: "For any project or AI agent" },
+];
 
 export function Hero() {
   return (
-    <section
-      className="border-b border-border px-6 py-20 text-center sm:py-28"
-      style={{ background: "linear-gradient(to bottom, var(--accent-soft), var(--background))" }}
-    >
-      <div className="mx-auto flex max-w-3xl flex-col items-center gap-6" style={{ textShadow: "0 1px 4px rgba(0,0,0,0.35)" }}>
-        <span className="rounded-full bg-surface px-3 py-1 text-xs font-semibold uppercase tracking-wide text-accent shadow-sm" style={{ textShadow: "none" }}>
-          Live on Arc mainnet
-        </span>
-        <h1 className="text-4xl font-semibold tracking-tight sm:text-5xl">
-          An open settlement primitive, and the autonomous agent that&apos;s already using it.
-        </h1>
-        <p className="max-w-xl text-base leading-relaxed text-foreground sm:text-lg">
-          Arcurrent&apos;s treasury agent watches what you owe and decides when it&apos;s safe to pay from
-          real signals. It pays from an on-chain vault it can never withdraw from and can only spend
-          inside limits its owner set, so even leaked credentials are bounded by numbers you chose. Every
-          payment is a mandate on <span className="font-mono text-sm">MandateEscrow</span>, an open,
-          permissionless contract any address can fund, fulfill, or read. No human clicks approve, and
-          every settlement is real, on Arc mainnet, and independently verifiable on-chain.
-        </p>
-        <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
-          <Link
-            href="/deck"
-            className="rounded-lg bg-accent px-5 py-2.5 text-sm font-semibold text-accent-foreground shadow-sm transition hover:opacity-90"
-          >
-            View the pitch deck →
-          </Link>
-          <Link
-            href="/dashboard"
-            className="rounded-lg border border-border bg-surface px-5 py-2.5 text-sm font-semibold text-foreground shadow-sm transition hover:bg-background"
-          >
-            Open the dashboard
-          </Link>
-          <a
-            href="https://github.com/angelraph/arcurrent"
-            target="_blank"
-            rel="noreferrer"
-            className="rounded-lg border border-border bg-surface px-5 py-2.5 text-sm font-semibold text-foreground shadow-sm transition hover:bg-background"
-          >
-            View source on GitHub
-          </a>
+    <section className="relative overflow-hidden border-b border-border">
+      <div aria-hidden className="grid-paper absolute inset-0" />
+      <div className="relative mx-auto grid w-full max-w-[1200px] items-center gap-12 px-6 py-16 lg:grid-cols-[1.02fr_1fr] lg:gap-10 lg:py-24">
+        <div className="flex flex-col gap-7">
+          <p className="eyebrow">Live on Arc mainnet · source verified</p>
+          <h1 className="display text-[clamp(34px,4.3vw,56px)]">
+            An open settlement primitive, and the autonomous agent that&apos;s already using it.
+          </h1>
+          <p className="max-w-xl text-base leading-relaxed text-foreground/85 sm:text-lg">
+            Arcurrent&apos;s treasury agent watches what you owe and decides when it&apos;s safe to pay from real
+            signals. It pays from an on-chain vault it can never withdraw from and can only spend inside limits
+            its owner set, so even leaked credentials are bounded by numbers you chose. Every payment is a
+            mandate on <span className="font-mono text-[0.9em]">MandateEscrow</span>, an open, permissionless
+            contract any address can fund, fulfill, or read. No human clicks approve, and every settlement is
+            real, on Arc mainnet, and independently verifiable on-chain.
+          </p>
+
+          <ul className="flex flex-wrap gap-x-6 gap-y-3">
+            {CAPABILITIES.map((c) => (
+              <li key={c.title} className="flex items-center gap-2.5">
+                <span aria-hidden className="h-3 w-3 shrink-0 rounded-[2px] bg-accent" />
+                <span className="flex flex-col leading-tight">
+                  <span className="text-sm font-semibold">{c.title}</span>
+                  <span className="text-xs text-muted">{c.sub}</span>
+                </span>
+              </li>
+            ))}
+          </ul>
+
+          <div className="flex flex-wrap items-center gap-3 pt-1">
+            <Link href="/dashboard" className="btn btn-primary">
+              Open the dashboard →
+            </Link>
+            <Link href="/deck" className="btn btn-outline">
+              View the pitch deck
+            </Link>
+            <a
+              href="https://github.com/angelraph/arcurrent"
+              target="_blank"
+              rel="noreferrer"
+              className="px-1 text-sm font-semibold text-muted transition hover:text-foreground"
+            >
+              Source on GitHub ↗
+            </a>
+          </div>
         </div>
+
+        <RailDiagram />
       </div>
     </section>
   );

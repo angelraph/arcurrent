@@ -547,7 +547,7 @@ export function WalletMandatePanel({ initialMandateId }: { initialMandateId?: st
   return (
     <section className="flex flex-col gap-3 rounded-xl border-2 border-accent bg-surface p-5 shadow-sm">
       <div className="flex flex-col gap-1">
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-accent">Use MandateEscrow yourself</h2>
+        <h2 className="eyebrow">Use MandateEscrow yourself</h2>
         <p className="text-xs text-muted">
           This doesn&apos;t touch Arcurrent&apos;s treasury. Connect your own wallet and fund a mandate with
           your own USDC on Arc mainnet · the same open, permissionless contract Arcurrent&apos;s own agent
@@ -562,11 +562,11 @@ export function WalletMandatePanel({ initialMandateId }: { initialMandateId?: st
           <AccountBar />
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div className="flex flex-col gap-2">
-              <h3 className="text-xs font-semibold uppercase tracking-wide text-muted">Create a mandate</h3>
+              <h3 className="label-mono">Create a mandate</h3>
               <CreateMandateForm onCreated={setJustCreatedId} />
             </div>
             <div className="flex flex-col gap-2">
-              <h3 className="text-xs font-semibold uppercase tracking-wide text-muted">Manage a mandate</h3>
+              <h3 className="label-mono">Manage a mandate</h3>
               <ManageMandateForm
                 key={justCreatedId?.toString() ?? "manage"}
                 initialMandateId={justCreatedId ?? undefined}

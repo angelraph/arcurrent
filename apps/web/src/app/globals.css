@@ -1,6 +1,7 @@
 @import "tailwindcss";
 
 :root {
+  /* Arc palette: unchanged. */
   --background: #f7f9fc;
   --surface: #ffffff;
   --foreground: #0f1629;
@@ -15,6 +16,20 @@
   --warning-soft: #fbf0dc;
   --danger: #d0362f;
   --danger-soft: #fbe9e8;
+
+  /* Structural tokens for the ledger-style layout. All derived from the Arc
+     palette: the blue for rails, the sunset gradient's warm tones for labels
+     and the dark contrast card, a deep navy for the closing band. */
+  --panel: #eaf2fb; /* contained narrative cards */
+  --plum: #3a1230; /* dark contrast card, from the gradient's deep end */
+  --plum-foreground: #f6e9ef;
+  --band: #070b14; /* full-width closing band */
+  --band-foreground: #e8ecf4;
+  --band-muted: rgba(232, 236, 244, 0.62);
+  --band-rule: rgba(232, 236, 244, 0.18);
+  --signal: #b25b12; /* technical eyebrow labels */
+  --grid: rgba(15, 22, 41, 0.06); /* graph-paper lines */
+  --rule: #d4dae6; /* hairlines that need to read on paper */
 }
 
 @theme inline {
@@ -32,8 +47,23 @@
   --color-warning-soft: var(--warning-soft);
   --color-danger: var(--danger);
   --color-danger-soft: var(--danger-soft);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-panel: var(--panel);
+  --color-plum: var(--plum);
+  --color-plum-foreground: var(--plum-foreground);
+  --color-band: var(--band);
+  --color-band-foreground: var(--band-foreground);
+  --color-signal: var(--signal);
+  --color-rule: var(--rule);
+  --font-sans: var(--font-inter);
+  --font-display: var(--font-manrope);
+  --font-mono: var(--font-plex-mono);
+
+  /* Sharper geometry everywhere the existing screens already use rounded-*:
+     8px cards, 4px controls, no drop shadows, hairlines do the structuring. */
+  --radius-lg: 4px;
+  --radius-xl: 8px;
+  --radius-2xl: 8px;
+  --shadow-sm: 0 0 #0000;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -52,6 +82,25 @@
     --warning-soft: #2b2313;
     --danger: #f2665f;
     --danger-soft: #2c1717;
+
+    --panel: #131d30;
+    --plum: #3a1230;
+    --plum-foreground: #f6e9ef;
+    --band: #070b14;
+    --signal: #f39a36;
+    --grid: rgba(232, 236, 244, 0.055);
+    --rule: #2a3450;
+  }
+}
+
+html {
+  scroll-behavior: smooth;
+  scroll-padding-top: 24px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
   }
 }
 
@@ -59,6 +108,9 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
+  font-feature-settings: "cv10" 1, "ss07" 1;
+  /* Arrows like the external-link glyph must stay plain text, not emoji. */
+  font-variant-emoji: text;
   position: relative;
 }
 
@@ -66,10 +118,12 @@ body {
    the existing --background color, not replacing it. Fixed height and a
    transparent final stop so it reads as a hero-area accent and fades into
    the normal background before reaching page content further down, keeping
-   card/surface contrast untouched everywhere it matters. */
+   card/surface contrast untouched everywhere it matters. Absolute, not
+   fixed: it belongs to the top of the page and scrolls away with it, so it
+   never sits behind body text further down and hurts its contrast. */
 body::before {
   content: "";
-  position: fixed;
+  position: absolute;
   top: 0;
   left: 0;
   right: 0;
@@ -85,4 +139,121 @@ body::before {
     transparent 100%
   );
   opacity: 0.55;
+}
+
+/* ---- Shared building blocks ------------------------------------------- */
+
+/* Monospace "ledger metadata" label: small, uppercase, quiet. */
+.label-mono {
+  font-family: var(--font-plex-mono), ui-monospace, monospace;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.2;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+/* The warm technical eyebrow that sits above a section heading. */
+.eyebrow {
+  font-family: var(--font-plex-mono), ui-monospace, monospace;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.2;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--signal);
+}
+
+/* Large, quiet, tightly tracked display type. */
+.display {
+  font-family: var(--font-manrope), var(--font-inter), system-ui, sans-serif;
+  font-weight: 500;
+  letter-spacing: -0.035em;
+  line-height: 1.04;
+}
+
+.section-title {
+  font-family: var(--font-manrope), var(--font-inter), system-ui, sans-serif;
+  font-weight: 500;
+  letter-spacing: -0.03em;
+  line-height: 1.08;
+  font-size: clamp(30px, 4.2vw, 48px);
+}
+
+/* Faint graph paper, fading out toward the bottom of its container. */
+.grid-paper {
+  background-image:
+    linear-gradient(var(--grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+  background-size: 32px 32px;
+  -webkit-mask-image: linear-gradient(to bottom, #000 55%, transparent 100%);
+  mask-image: linear-gradient(to bottom, #000 55%, transparent 100%);
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 16px;
+  border-radius: 4px;
+  border: 1px solid transparent;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.4;
+  transition: opacity 0.15s ease, background-color 0.15s ease, border-color 0.15s ease;
+}
+
+.btn-primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-foreground);
+}
+
+.btn-primary:hover {
+  opacity: 0.9;
+}
+
+.btn-outline {
+  background: transparent;
+  border-color: color-mix(in srgb, var(--foreground) 32%, transparent);
+  color: var(--foreground);
+}
+
+.btn-outline:hover {
+  background: var(--surface);
+  border-color: var(--foreground);
+}
+
+.btn:focus-visible,
+a:focus-visible,
+summary:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* FAQ accordion: native <details>, no script, keyboard and screen-reader
+   friendly by default. The plus rotates into a cross when open. */
+.faq-item > summary {
+  list-style: none;
+  cursor: pointer;
+}
+
+.faq-item > summary::-webkit-details-marker {
+  display: none;
+}
+
+.faq-item .faq-plus {
+  transition: transform 0.2s ease;
+}
+
+.faq-item[open] .faq-plus {
+  transform: rotate(45deg);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .faq-item .faq-plus {
+    transition: none;
+  }
 }

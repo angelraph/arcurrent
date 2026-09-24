@@ -109,8 +109,8 @@ export function FundRequest({ request }: { request: PaymentRequest }) {
   return (
     <div className="flex flex-col gap-4">
       <section className="flex flex-col gap-2 rounded-xl border-2 border-accent bg-surface p-5 shadow-sm">
-        <h2 className="text-xs font-semibold uppercase tracking-wide text-accent">Payment request</h2>
-        <p className="text-2xl font-semibold tracking-tight">
+        <h2 className="eyebrow">Payment request</h2>
+        <p className="display text-[clamp(26px,3.4vw,36px)]">
           <span className="font-mono">${request.amount}</span> USDC
         </p>
         {request.note && <p className="text-sm">&ldquo;{request.note}&rdquo;</p>}
@@ -126,7 +126,7 @@ export function FundRequest({ request }: { request: PaymentRequest }) {
       </section>
 
       <section className="flex flex-col gap-3 rounded-xl border border-border bg-surface p-5 shadow-sm">
-        <h2 className="text-xs font-semibold uppercase tracking-wide text-muted">Fund it from your wallet</h2>
+        <h2 className="label-mono">Fund it from your wallet</h2>
         <ConnectGate>
           <div className="flex flex-col gap-3">
             <AccountBar />

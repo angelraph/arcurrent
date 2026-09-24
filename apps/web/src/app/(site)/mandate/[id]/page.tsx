@@ -87,12 +87,12 @@ export default async function MandatePage({ params }: { params: Promise<{ id: st
     <div className="flex flex-1 flex-col">
       <Nav />
       <PageShell>
-        <div className="flex flex-col gap-2" style={{ textShadow: "0 1px 4px rgba(0,0,0,0.35)" }}>
+        <div className="flex flex-col gap-2">
           <Link href="/dashboard" className="text-xs text-muted hover:text-foreground">
             ← Dashboard
           </Link>
           <div className="flex flex-wrap items-center gap-3">
-            <h1 className="text-2xl font-semibold tracking-tight">Mandate #{mandate.id}</h1>
+            <h1 className="display text-[clamp(26px,3.4vw,36px)]">Mandate #{mandate.id}</h1>
             <MandateStatusPill status={mandate.status} />
           </div>
           <p className="text-sm text-foreground/80">{STATUS_EXPLAINED[mandate.status]}</p>
