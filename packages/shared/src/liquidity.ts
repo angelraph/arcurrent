@@ -59,12 +59,9 @@ function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise
  * itself is left to the next evaluation pass, since CCTP attestation can
  * take longer than a single cron invocation should block on.
  *
- * Used to also deposit the bridged funds into ObligationEscrow's pre-funded
- * pool afterward. Since settlement now goes through MandateEscrow (see
- * settleObligationViaMandate in mandate.ts), which pulls USDC directly from
- * the treasury wallet's own balance per mandate rather than a pre-funded
- * pool, landing the bridged funds in the treasury wallet is the whole job —
- * there's no separate pool left to deposit into.
+ * The bridged funds land directly in the AgentVault (`treasuryAddress`), the
+ * treasury the agent decides against and pays from, and that is the whole
+ * job: there is no separate pool to deposit into afterward.
  */
 export async function topUpTreasuryLiquidity(params: {
   amountUsdc: number;

@@ -37,6 +37,9 @@ export const MANDATE_ESCROW_ADDRESS = process.env.NEXT_PUBLIC_MANDATE_ESCROW_ADD
   | `0x${string}`
   | undefined;
 
+/** The treasury AgentVault. Public, like MANDATE_ESCROW_ADDRESS; the owner controls in the browser need it. */
+export const VAULT_ADDRESS = process.env.NEXT_PUBLIC_VAULT_ADDRESS as `0x${string}` | undefined;
+
 export const wagmiConfig = createConfig({
   chains: [arcMainnet],
   connectors: [injected()],

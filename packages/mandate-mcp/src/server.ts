@@ -1,5 +1,5 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { MandateClient, MandateError, erc20Abi, formatUsdc, parseUsdc, type Mandate } from "@arcurrent/mandate-sdk";
+import { MandateClient, MandateError, VaultClient, erc20Abi, formatUsdc, parseUsdc, type Mandate } from "@arcurrent/mandate-sdk";
 import { z } from "zod";
 
 export interface MandateServerConfig {
@@ -13,6 +13,12 @@ export interface MandateServerConfig {
    * mandate at a time.
    */
   sessionBudgetUsdc: string;
+  /**
+   * Route all payments through this AgentVault. With a vault, the unrestricted
+   * tools (create, release, refund) are not registered at all: the only way to
+   * move funds is vault_pay, which the vault's on-chain rules bound.
+   */
+  vault?: VaultClient;
 }
 
 const addressSchema = z
@@ -62,6 +68,105 @@ function describeMandate(m: Mandate, wallet: `0x${string}` | undefined, writesEn
   };
 }
 
+interface VaultToolContext {
+  vault: VaultClient;
+  writesEnabled: boolean;
+  budget: bigint;
+  config: MandateServerConfig;
+  spent: () => bigint;
+  addSpent: (amount: bigint) => void;
+}
+
+function registerVaultTools(server: McpServer, ctx: VaultToolContext) {
+  const { vault, writesEnabled, budget, config } = ctx;
+
+  server.registerTool(
+    "get_vault",
+    {
+      title: "Get the vault's rules and balance",
+      description: "Reads the AgentVault this server pays through: its USDC balance, the per-payment and daily caps, how much of the daily allowance is available right now, whether payees must be on an allowlist, whether it is paused, and who the owner, operator and guardian are.",
+      annotations: READ_ONLY,
+    },
+    async () => {
+      try {
+        const p = await vault.getPolicy();
+        return ok({
+          vault: vault.vaultAddress,
+          balance_usdc: p.balanceUsdc,
+          per_payment_cap_usdc: p.perPaymentCapUsdc,
+          daily_cap_usdc: p.dailyCapUsdc,
+          available_now_usdc: p.availableUsdc,
+          allowlist_required: p.allowlistRequired,
+          paused: p.paused,
+          owner: p.owner,
+          operator: p.operator,
+          guardian: p.guardian,
+          this_wallet_is_operator: vault.address ? vault.address.toLowerCase() === p.operator.toLowerCase() : null,
+        });
+      } catch (err) {
+        return fail(err);
+      }
+    }
+  );
+
+  server.registerTool(
+    "check_vault_payment",
+    {
+      title: "Check whether the vault would allow a payment",
+      description: "Asks whether a payment would go through right now under the vault's rules, without sending anything or spending gas. If not, says why (over a cap, payee not on the allowlist, paused, daily allowance used up and when it refills, vault too empty). Always call this before vault_pay.",
+      inputSchema: { to: addressSchema, amount_usdc: z.string().describe('Decimal USDC, e.g. "0.5".') },
+      annotations: READ_ONLY,
+    },
+    async ({ to, amount_usdc }) => {
+      try {
+        const result = await vault.checkPay({ to, amountUsdc: amount_usdc }, vault.address);
+        return ok(result.ok ? { ok: true } : { ok: false, reason: result.code, message: result.message });
+      } catch (err) {
+        return fail(err);
+      }
+    }
+  );
+
+  if (!writesEnabled) return;
+
+  server.registerTool(
+    "vault_pay",
+    {
+      title: "Pay from the vault",
+      description: "Pays USDC from the vault to an address as one atomic MandateEscrow mandate (created and released in a single transaction). The vault enforces its owner's rules on-chain, so this cannot exceed the per-payment cap, the daily allowance, or pay a payee the allowlist does not include, and it cannot withdraw. It still moves real funds and cannot be undone: confirm the payee and amount with the user first.",
+      inputSchema: {
+        to: addressSchema,
+        amount_usdc: z.string().describe('Decimal USDC, e.g. "0.5".'),
+        ref: z.string().max(200).optional().describe("Optional note or id to tag the payment with (hashed into the on-chain event)."),
+      },
+      annotations: MOVES_FUNDS,
+    },
+    async ({ to, amount_usdc, ref }) => {
+      try {
+        const amount = parseUsdc(amount_usdc, vault.usdcDecimals);
+        if (ctx.spent() + amount > budget) {
+          throw new MandateError(
+            "AMOUNT_OVER_CAP",
+            `This would bring the session total to ${formatUsdc(ctx.spent() + amount, vault.usdcDecimals)} USDC, over the ${config.sessionBudgetUsdc} USDC session budget. Restart the server to reset it, or raise MANDATE_SESSION_BUDGET_USDC.`
+          );
+        }
+        const result = await vault.pay({ to: to as `0x${string}`, amountUsdc: amount_usdc, ref });
+        ctx.addSpent(amount);
+        return ok({
+          mandate_id: result.mandateId.toString(),
+          amount_usdc,
+          to,
+          tx: result.hash,
+          tx_url: result.explorerUrl,
+          page: `https://arcurrent.site/mandate/${result.mandateId}`,
+        });
+      } catch (err) {
+        return fail(err);
+      }
+    }
+  );
+}
+
 const READ_ONLY = { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: true } as const;
 const MOVES_FUNDS = { readOnlyHint: false, destructiveHint: true, idempotentHint: false, openWorldHint: true } as const;
 
@@ -72,7 +177,7 @@ const MOVES_FUNDS = { readOnlyHint: false, destructiveHint: true, idempotentHint
  * agent; the only text that is hashed is what the agent itself supplies.
  */
 export function createMandateServer(config: MandateServerConfig): McpServer {
-  const { client, writesEnabled } = config;
+  const { client, writesEnabled, vault } = config;
   const budget = parseUsdc(config.sessionBudgetUsdc, client.usdcDecimals);
   let lockedThisSession = 0n;
 
@@ -81,9 +186,14 @@ export function createMandateServer(config: MandateServerConfig): McpServer {
     {
       instructions:
         "MandateEscrow is an open escrow and reputation contract on Arc mainnet (USDC). A funder locks USDC in a mandate for a fulfiller (or leaves it open), the fulfiller posts a hash of their proof, and the funder releases the funds, optionally split across several addresses in one transaction. Outcomes update an on-chain reputation ledger per address. " +
-        (writesEnabled
-          ? "This server can move real funds from its configured wallet: confirm amounts and destinations with your user before create_mandate or release_mandate, and prefer small amounts."
-          : "This server is read-only: it can inspect mandates and reputation but cannot move funds."),
+        (vault
+          ? "Payments go through an AgentVault: an on-chain treasury whose owner-set rules (per-payment cap, daily cap, payee allowlist, pause) bound what this server can send, and which it can never withdraw from. " +
+            (writesEnabled
+              ? "Use check_vault_payment first, then vault_pay, and confirm the payee and amount with your user."
+              : "This server is read-only: it can inspect the vault and check whether a payment would be allowed, but cannot pay.")
+          : writesEnabled
+            ? "This server can move real funds from its configured wallet: confirm amounts and destinations with your user before create_mandate or release_mandate, and prefer small amounts."
+            : "This server is read-only: it can inspect mandates and reputation but cannot move funds."),
     }
   );
 
@@ -108,9 +218,10 @@ export function createMandateServer(config: MandateServerConfig): McpServer {
           balance = formatUsdc(raw, client.usdcDecimals);
         }
         return ok({
-          network: "Arc mainnet (chain 5042)",
+          network: client.publicClient.chain ? `${client.publicClient.chain.name} (chain ${client.publicClient.chain.id})` : "Arc",
           mandate_escrow: client.escrowAddress,
           writes_enabled: writesEnabled,
+          vault: vault?.vaultAddress ?? null,
           wallet: address ?? null,
           wallet_usdc_balance: balance,
           session_budget_usdc: config.sessionBudgetUsdc,
@@ -134,7 +245,7 @@ export function createMandateServer(config: MandateServerConfig): McpServer {
       try {
         const mandate = await client.getMandate(id);
         if (!mandate) return fail(new MandateError("NOT_FOUND", `Mandate #${id} does not exist.`));
-        return ok(describeMandate(mandate, client.address, writesEnabled));
+        return ok(describeMandate(mandate, client.address, writesEnabled && !vault));
       } catch (err) {
         return fail(err);
       }
@@ -155,7 +266,7 @@ export function createMandateServer(config: MandateServerConfig): McpServer {
     async ({ limit, offset }) => {
       try {
         const mandates = await client.listMandates({ limit, offset });
-        return ok({ count: mandates.length, mandates: mandates.map((m) => describeMandate(m, client.address, writesEnabled)) });
+        return ok({ count: mandates.length, mandates: mandates.map((m) => describeMandate(m, client.address, writesEnabled && !vault)) });
       } catch (err) {
         return fail(err);
       }
@@ -197,6 +308,11 @@ export function createMandateServer(config: MandateServerConfig): McpServer {
       }
     }
   );
+
+  if (vault) {
+    registerVaultTools(server, { vault, writesEnabled, budget, config, spent: () => lockedThisSession, addSpent: (n) => (lockedThisSession += n) });
+    return server;
+  }
 
   if (!writesEnabled) return server;
 

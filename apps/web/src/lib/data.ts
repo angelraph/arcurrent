@@ -5,6 +5,7 @@ import {
   getMandates,
   getSupabaseServerClient,
   getTreasuryUsdcBalance,
+  getVaultPolicy,
   toObligation,
   type AgentDecision,
   type Mandate,
@@ -86,15 +87,51 @@ export async function getLatestDecisionByObligation(): Promise<Map<string, Agent
   return latest;
 }
 
-export interface TreasuryBalances {
-  /** What MandateEscrow pulls from when the agent settles an obligation. Null (not a fake number) when TREASURY_WALLET_ID isn't set. */
-  walletUsdc: number | null;
+/**
+ * The treasury AgentVault as the dashboard shows it. Plain strings and numbers
+ * only (no bigint), so it can cross from server to client components freely.
+ */
+export interface VaultOverview {
+  address: `0x${string}`;
+  owner: `0x${string}`;
+  operator: `0x${string}`;
+  guardian: `0x${string}`;
+  balanceUsdc: string;
+  perPaymentCapUsdc: string;
+  dailyCapUsdc: string;
+  availableUsdc: string;
+  /** How full the daily allowance is right now, 0 to 100. */
+  availablePercent: number;
+  allowlistRequired: boolean;
+  paused: boolean;
+  /** USDC in the agent's own Circle wallet, which only pays gas. Null if the wallet isn't configured. */
+  gasFloatUsdc: number | null;
 }
 
-export async function getTreasuryBalance(): Promise<TreasuryBalances> {
+/** null when VAULT_ADDRESS isn't configured (an honest "not set up" state, never a made-up number). */
+export async function getVaultOverview(): Promise<VaultOverview | null> {
+  const address = process.env.VAULT_ADDRESS as `0x${string}` | undefined;
+  if (!address) return null;
+
   const walletId = process.env.TREASURY_WALLET_ID;
-  const walletUsdc = walletId ? await getTreasuryUsdcBalance(walletId) : null;
-  return { walletUsdc };
+  const [policy, gasFloatUsdc] = await Promise.all([
+    getVaultPolicy(address),
+    walletId ? getTreasuryUsdcBalance(walletId).catch(() => null) : Promise.resolve(null),
+  ]);
+  return {
+    address,
+    owner: policy.owner,
+    operator: policy.operator,
+    guardian: policy.guardian,
+    balanceUsdc: policy.balanceUsdc,
+    perPaymentCapUsdc: policy.perPaymentCapUsdc,
+    dailyCapUsdc: policy.dailyCapUsdc,
+    availableUsdc: policy.availableUsdc,
+    availablePercent: policy.dailyCap === 0n ? 0 : Number((policy.available * 10_000n) / policy.dailyCap) / 100,
+    allowlistRequired: policy.allowlistRequired,
+    paused: policy.paused,
+    gasFloatUsdc,
+  };
 }
 
 export interface MandateWithReputation extends Mandate {

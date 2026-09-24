@@ -1,6 +1,6 @@
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
-import { MandateError, type Mandate, type MandateClient } from "@arcurrent/mandate-sdk";
+import { MandateError, type Mandate, type MandateClient, type VaultClient } from "@arcurrent/mandate-sdk";
 import { describe, expect, it, vi } from "vitest";
 import { loadConfig } from "./config.js";
 import { createMandateServer } from "./server.js";
@@ -42,16 +42,43 @@ function stubClient(address: `0x${string}` | undefined = undefined) {
   return stub;
 }
 
-async function connect(stub: ReturnType<typeof stubClient>, over: { writesEnabled?: boolean; sessionBudgetUsdc?: string } = {}) {
+async function connect(
+  stub: ReturnType<typeof stubClient>,
+  over: { writesEnabled?: boolean; sessionBudgetUsdc?: string; vault?: ReturnType<typeof stubVault> } = {}
+) {
   const server = createMandateServer({
     client: stub as unknown as MandateClient,
     writesEnabled: over.writesEnabled ?? false,
     sessionBudgetUsdc: over.sessionBudgetUsdc ?? "20",
+    vault: over.vault as unknown as VaultClient | undefined,
   });
   const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
   const client = new Client({ name: "test", version: "0" });
   await Promise.all([server.connect(serverTransport), client.connect(clientTransport)]);
   return client;
+}
+
+const VAULT = "0x5555555555555555555555555555555555555555" as const;
+
+function stubVault(address: `0x${string}` | undefined = ME) {
+  return {
+    vaultAddress: VAULT,
+    address,
+    usdcDecimals: 6,
+    getPolicy: vi.fn(async () => ({
+      owner: OTHER,
+      operator: ME,
+      guardian: OTHER,
+      perPaymentCapUsdc: "1",
+      dailyCapUsdc: "5",
+      availableUsdc: "2.5",
+      balanceUsdc: "10",
+      allowlistRequired: true,
+      paused: false,
+    })),
+    checkPay: vi.fn(async () => ({ ok: true }) as { ok: boolean; code?: string; message?: string }),
+    pay: vi.fn(async () => ({ mandateId: 12n, hash: TX, explorerUrl: `https://explorer.arc.io/tx/${TX}` })),
+  };
 }
 
 async function call(client: Client, name: string, args: Record<string, unknown> = {}) {
@@ -221,5 +248,124 @@ describe("loadConfig", () => {
     expect(() => loadConfig({ MANDATE_ESCROW_ADDRESS: "0xnope" })).toThrow(/valid 0x address/);
     expect(() => loadConfig({ MANDATE_MAX_USDC: "lots" })).toThrow();
     expect(() => loadConfig({ MANDATE_SESSION_BUDGET_USDC: "-5" })).toThrow();
+  });
+});
+
+describe("vault mode", () => {
+  const RAW_WRITES = ["create_mandate", "submit_proof", "release_mandate", "refund_mandate"];
+
+  it("read-only vault mode adds the inspection tools and no way to pay", async () => {
+    const client = await connect(stubClient(), { vault: stubVault(undefined) });
+    const names = (await client.listTools()).tools.map((t) => t.name).sort();
+    expect(names).toEqual(["check_vault_payment", "get_config", "get_mandate", "get_reputation", "get_vault", "list_mandates", "verify_proof"]);
+  });
+
+  it("with writes on, vault_pay exists and the unrestricted fund-moving tools do not", async () => {
+    const client = await connect(stubClient(ME), { writesEnabled: true, vault: stubVault() });
+    const names = (await client.listTools()).tools.map((t) => t.name);
+    expect(names).toContain("vault_pay");
+    for (const raw of RAW_WRITES) expect(names).not.toContain(raw);
+    expect((await client.listTools()).tools.find((t) => t.name === "vault_pay")?.annotations?.destructiveHint).toBe(true);
+  });
+
+  it("get_vault reports the rules and whether this wallet is the operator", async () => {
+    const client = await connect(stubClient(ME), { writesEnabled: true, vault: stubVault(ME) });
+    expect((await call(client, "get_vault")).json).toMatchObject({
+      vault: VAULT,
+      balance_usdc: "10",
+      per_payment_cap_usdc: "1",
+      daily_cap_usdc: "5",
+      available_now_usdc: "2.5",
+      allowlist_required: true,
+      paused: false,
+      this_wallet_is_operator: true,
+    });
+  });
+
+  it("check_vault_payment says yes, or why not", async () => {
+    const vault = stubVault();
+    const client = await connect(stubClient(ME), { writesEnabled: true, vault });
+    expect((await call(client, "check_vault_payment", { to: OTHER, amount_usdc: "0.5" })).json).toEqual({ ok: true });
+    vault.checkPay.mockResolvedValueOnce({ ok: false, code: "PAYEE_NOT_ALLOWED", message: "Ask the owner." });
+    expect((await call(client, "check_vault_payment", { to: OTHER, amount_usdc: "0.5" })).json).toEqual({
+      ok: false,
+      reason: "PAYEE_NOT_ALLOWED",
+      message: "Ask the owner.",
+    });
+  });
+
+  it("vault_pay pays through the vault and returns the mandate", async () => {
+    const vault = stubVault();
+    const client = await connect(stubClient(ME), { writesEnabled: true, vault });
+    const { json } = await call(client, "vault_pay", { to: OTHER, amount_usdc: "0.5", ref: "invoice 7" });
+    expect(vault.pay).toHaveBeenCalledWith({ to: OTHER, amountUsdc: "0.5", ref: "invoice 7" });
+    expect(json).toMatchObject({ mandate_id: "12", tx: TX, to: OTHER });
+  });
+
+  it("surfaces the vault's own refusal as a structured error", async () => {
+    const vault = stubVault();
+    vault.pay.mockRejectedValueOnce(new MandateError("OVER_DAILY_ALLOWANCE", "Used up; refills in 40 minutes."));
+    const client = await connect(stubClient(ME), { writesEnabled: true, vault });
+    const { json, isError } = await call(client, "vault_pay", { to: OTHER, amount_usdc: "0.5" });
+    expect(isError).toBe(true);
+    expect(json.error).toBe("OVER_DAILY_ALLOWANCE");
+  });
+
+  it("still applies the session budget on top of the vault's own limits", async () => {
+    const vault = stubVault();
+    const client = await connect(stubClient(ME), { writesEnabled: true, sessionBudgetUsdc: "1", vault });
+    expect((await call(client, "vault_pay", { to: OTHER, amount_usdc: "0.75" })).isError).toBe(false);
+    const over = await call(client, "vault_pay", { to: OTHER, amount_usdc: "0.5" });
+    expect(over.json.error).toBe("AMOUNT_OVER_CAP");
+    expect(vault.pay).toHaveBeenCalledTimes(1);
+  });
+
+  it("rejects malformed vault_pay input before it reaches the vault", async () => {
+    const vault = stubVault();
+    const client = await connect(stubClient(ME), { writesEnabled: true, vault });
+    expect((await call(client, "vault_pay", { to: "0x12", amount_usdc: "1" })).isError).toBe(true);
+    expect((await call(client, "vault_pay", { to: OTHER, amount_usdc: "abc" })).isError).toBe(true);
+    expect(vault.pay).not.toHaveBeenCalled();
+  });
+
+  it("does not offer the raw-tool action hints on a mandate", async () => {
+    const client = await connect(stubClient(ME), { writesEnabled: true, vault: stubVault() });
+    expect((await call(client, "get_mandate", { id: 3 })).json.actions_available_to_this_wallet).toBeUndefined();
+  });
+});
+
+describe("loadConfig with a vault", () => {
+  const VAULT_ENV = "0x5555555555555555555555555555555555555555";
+
+  it("rejects a malformed vault address", () => {
+    expect(() => loadConfig({ MANDATE_VAULT_ADDRESS: "0xnope" })).toThrow(/MANDATE_VAULT_ADDRESS/);
+  });
+
+  it("attaches a vault read-only when there is no key", () => {
+    const { config, notices } = loadConfig({ MANDATE_VAULT_ADDRESS: VAULT_ENV });
+    expect(config.vault?.vaultAddress).toBe(VAULT_ENV);
+    expect(config.writesEnabled).toBe(false);
+    expect(notices.join(" ")).toMatch(/read-only/);
+  });
+
+  it("goes into vault mode as the operator when the key and the write flag are set", () => {
+    const { config, notices } = loadConfig({ MANDATE_VAULT_ADDRESS: VAULT_ENV, MANDATE_PRIVATE_KEY: KEY, MANDATE_ENABLE_WRITES: "true" });
+    expect(config.vault?.address).toMatch(/^0x[0-9a-fA-F]{40}$/);
+    expect(config.writesEnabled).toBe(true);
+    expect(notices.join(" ")).toMatch(/Vault mode/);
+    expect(notices.join(" ")).not.toContain(KEY.slice(2));
+  });
+});
+
+describe("loadConfig network", () => {
+  it("defaults to mainnet and rejects an unknown network", () => {
+    expect(() => loadConfig({ MANDATE_NETWORK: "goerli" })).toThrow(/mainnet.*testnet/);
+    expect(loadConfig({}).config.client.publicClient.chain?.id).toBe(5042);
+  });
+
+  it("targets testnet only when the escrow address is given, since the mainnet contract does not exist there", () => {
+    expect(() => loadConfig({ MANDATE_NETWORK: "testnet" })).toThrow(/MANDATE_ESCROW_ADDRESS is required on testnet/);
+    const { config } = loadConfig({ MANDATE_NETWORK: "testnet", MANDATE_ESCROW_ADDRESS: "0xe57B47DC952eDFFfd397bf682282b0f6a8C3d983" });
+    expect(config.client.publicClient.chain?.id).toBe(5042002);
   });
 });

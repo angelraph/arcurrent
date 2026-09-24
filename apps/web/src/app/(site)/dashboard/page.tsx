@@ -3,14 +3,15 @@ import {
   getMandatesWithReputation,
   getObligations,
   getRecentDecisions,
-  getTreasuryBalance,
-  type TreasuryBalances,
+  getVaultOverview,
 } from "@/lib/data";
 import Link from "next/link";
 import { formatUsdc } from "@/lib/format";
 import { Nav } from "../../nav";
 import { ObligationForm } from "../../obligation-form";
 import { DecisionPill, MandateStatusPill, StatusPill } from "../../status-pill";
+import { VaultOwnerPanel } from "../../vault-owner-panel";
+import { VaultPanel } from "../../vault-panel";
 import { WalletMandatePanel } from "../../wallet-mandate-panel";
 import { getActiveArcNetwork, type AgentDecision } from "@arcurrent/shared";
 
@@ -24,8 +25,6 @@ export const dynamic = "force-dynamic";
 // cron route.
 export const maxDuration = 60;
 
-const emptyBalance: TreasuryBalances = { walletUsdc: null };
-
 export default async function DashboardPage({
   searchParams,
 }: {
@@ -37,23 +36,24 @@ export default async function DashboardPage({
   // Promise.allSettled, not Promise.all: a real transient failure in one
   // panel's data (RPC blip, Circle rate limit, Supabase hiccup) shouldn't
   // blank the entire live dashboard. Each panel degrades independently below.
-  const [balanceResult, obligationsResult, decisionsResult, latestDecisionsResult, mandatesResult] =
+  const [vaultResult, obligationsResult, decisionsResult, latestDecisionsResult, mandatesResult] =
     await Promise.allSettled([
-      getTreasuryBalance(),
+      getVaultOverview(),
       getObligations(),
       getRecentDecisions(),
       getLatestDecisionByObligation(),
       getMandatesWithReputation(),
     ]);
 
-  const balance = balanceResult.status === "fulfilled" ? balanceResult.value : emptyBalance;
-  const balanceUnavailable = balanceResult.status === "rejected";
+  const vault = vaultResult.status === "fulfilled" ? vaultResult.value : null;
+  const vaultUnavailable = vaultResult.status === "rejected";
   const obligations = obligationsResult.status === "fulfilled" ? obligationsResult.value : [];
   const obligationsUnavailable = obligationsResult.status === "rejected";
   const decisions = decisionsResult.status === "fulfilled" ? decisionsResult.value : [];
   const decisionsUnavailable = decisionsResult.status === "rejected";
   const mandates = mandatesResult.status === "fulfilled" ? mandatesResult.value : [];
   const mandatesUnavailable = mandatesResult.status === "rejected";
+  const isVault = (address: string) => !!vault && vault.address.toLowerCase() === address.toLowerCase();
   // Separate from the decision-log feed above (which is intentionally
   // limited to the most recent 20) -- this is a per-obligation lookup, not
   // windowed by recency, so an older obligation's "latest decision" doesn't
@@ -85,23 +85,8 @@ export default async function DashboardPage({
         */}
         <WalletMandatePanel initialMandateId={initialMandateId} />
 
-        <section className="rounded-xl border border-border bg-surface p-5 shadow-sm">
-          <h2 className="text-xs font-semibold uppercase tracking-wide text-muted">
-            Treasury wallet <span className="normal-case text-muted">(spendable)</span>
-          </h2>
-          {balanceUnavailable ? (
-            <p className="mt-2 text-sm text-warning">Balance temporarily unavailable. Try refreshing.</p>
-          ) : balance.walletUsdc === null ? (
-            <p className="mt-2 text-sm text-warning">
-              Not configured. Run <code className="rounded bg-warning-soft px-1.5 py-0.5 font-mono text-xs">npm run setup:wallet</code> and set TREASURY_WALLET_ID.
-            </p>
-          ) : (
-            <p className="mt-2 font-mono text-3xl font-semibold tracking-tight">
-              ${formatUsdc(balance.walletUsdc)} <span className="text-lg font-medium text-muted">USDC</span>
-            </p>
-          )}
-          <p className="mt-2 text-xs text-muted">What MandateEscrow pulls from when the agent settles an obligation.</p>
-        </section>
+        <VaultPanel vault={vault} unavailable={vaultUnavailable} />
+        <VaultOwnerPanel />
 
         <section className="flex flex-col gap-3">
           <div className="flex flex-col gap-1">
@@ -256,7 +241,7 @@ export default async function DashboardPage({
                     </div>
                     <p className="mt-1 font-mono">${formatUsdc(m.amountUsdc)}</p>
                     <p className="mt-1 text-xs text-muted">
-                      funder <Link href={`/address/${m.funder}`} title={m.funder} className="hover:text-foreground hover:underline">{shortAddress(m.funder)}</Link> → fulfiller{" "}
+                      funder <Link href={`/address/${m.funder}`} title={m.funder} className="hover:text-foreground hover:underline">{shortAddress(m.funder)}</Link>{isVault(m.funder) && <span className="ml-1 rounded-full bg-accent-soft px-1.5 py-0.5 text-[10px] font-medium text-accent">vault</span>} → fulfiller{" "}
                       {/^0x0+$/.test(m.fulfiller) ? "open · unclaimed" : <Link href={`/address/${m.fulfiller}`} title={m.fulfiller} className="hover:text-foreground hover:underline">{shortAddress(m.fulfiller)}</Link>}
                     </p>
                     <p className="mt-1 text-xs text-muted">
@@ -285,7 +270,7 @@ export default async function DashboardPage({
                       <tr key={m.id} className="border-b border-border last:border-0">
                         <td className="px-4 py-3 font-mono"><Link href={`/mandate/${m.id}`} className="text-accent hover:underline">{m.id}</Link></td>
                         <td className="px-4 py-3 font-mono" title={m.funder}>
-                          <Link href={`/address/${m.funder}`} className="hover:underline">{shortAddress(m.funder)}</Link>
+                          <Link href={`/address/${m.funder}`} className="hover:underline">{shortAddress(m.funder)}</Link>{isVault(m.funder) && <span className="ml-1 rounded-full bg-accent-soft px-1.5 py-0.5 text-[10px] font-medium text-accent">vault</span>}
                         </td>
                         <td className="px-4 py-3 font-mono" title={m.fulfiller}>
                           {/^0x0+$/.test(m.fulfiller) ? (

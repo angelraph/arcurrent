@@ -38,7 +38,7 @@ function isValidAddress(v: string): v is `0x${string}` {
 }
 
 /** Trims wallet/RPC error messages down to their first line -- the rest is usually a stack trace or raw calldata nobody reading this UI needs. */
-function shortErrorMessage(err: unknown): string {
+export function shortErrorMessage(err: unknown): string {
   return err instanceof Error ? err.message.split("\n")[0] : "Transaction failed or was rejected.";
 }
 
@@ -131,14 +131,14 @@ export function AccountBar() {
   );
 }
 
-interface TxState {
+export interface TxState {
   error?: string;
   success?: string;
   txHash?: `0x${string}`;
 }
 
 /** Same explorer link pattern used in the agent decision log below on this page -- so a wallet-connect action is just as verifiable as an agent one. */
-function TxResult({ state }: { state: TxState }) {
+export function TxResult({ state }: { state: TxState }) {
   if (!state.error && !state.success) return null;
   return (
     <div className="flex flex-col gap-1">

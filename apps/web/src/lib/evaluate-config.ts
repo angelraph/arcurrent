@@ -9,9 +9,9 @@ import { requireEnvNumber, type EvaluateConfig } from "@arcurrent/shared";
 export function getEvaluateConfigFromEnv(): EvaluateConfig | { error: string } {
   const walletId = process.env.TREASURY_WALLET_ID;
   const walletAddress = process.env.TREASURY_WALLET_ADDRESS;
-  const mandateEscrowAddress = process.env.MANDATE_ESCROW_ADDRESS as `0x${string}` | undefined;
-  if (!walletId || !walletAddress || !mandateEscrowAddress) {
-    return { error: "TREASURY_WALLET_ID, TREASURY_WALLET_ADDRESS, and MANDATE_ESCROW_ADDRESS must be set" };
+  const vaultAddress = process.env.VAULT_ADDRESS as `0x${string}` | undefined;
+  if (!walletId || !walletAddress || !vaultAddress) {
+    return { error: "TREASURY_WALLET_ID, TREASURY_WALLET_ADDRESS, and VAULT_ADDRESS must be set" };
   }
 
   const oracleUrl = process.env.ORACLE_URL;
@@ -30,7 +30,7 @@ export function getEvaluateConfigFromEnv(): EvaluateConfig | { error: string } {
   return {
     walletId,
     walletAddress,
-    mandateEscrowAddress,
+    vaultAddress,
     reserveThresholdUsdc,
     payAheadWindowDays,
     oracle: oracleUrl && x402Key ? { url: oracleUrl, privateKey: x402Key } : undefined,

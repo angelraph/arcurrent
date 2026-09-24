@@ -44,7 +44,7 @@ const defaults = (): PolicyState => ({
   simulateError: null,
 });
 
-function paidLog(mandateId: bigint, address = VAULT): Log {
+function paidLog(mandateId: bigint, address: `0x${string}` = VAULT): Log {
   return {
     address,
     topics: encodeEventTopics({ abi: agentVaultAbi, eventName: "Paid", args: { operator: OPERATOR, to: PAYEE, mandateId } }),

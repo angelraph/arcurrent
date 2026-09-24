@@ -10,7 +10,9 @@
     "deploy:obligation-escrow": "hardhat ignition deploy ignition/modules/ObligationEscrow.ts --network arcTestnet",
     "deploy:mandate-escrow": "hardhat ignition deploy ignition/modules/MandateEscrow.ts --network arcTestnet",
     "deploy:obligation-escrow:mainnet": "hardhat ignition deploy ignition/modules/ObligationEscrow.ts --network arcMainnet",
-    "deploy:mandate-escrow:mainnet": "hardhat ignition deploy ignition/modules/MandateEscrow.ts --network arcMainnet"
+    "deploy:mandate-escrow:mainnet": "hardhat ignition deploy ignition/modules/MandateEscrow.ts --network arcMainnet",
+    "deploy:agent-vault": "hardhat ignition deploy ignition/modules/AgentVault.ts --network arcTestnet",
+    "deploy:agent-vault:mainnet": "hardhat ignition deploy ignition/modules/AgentVault.ts --network arcMainnet"
   },
   "devDependencies": {
     "@nomicfoundation/hardhat-ignition": "^3.1.8",

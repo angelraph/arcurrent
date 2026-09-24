@@ -1,23 +1,22 @@
 import type { BridgeChain } from "@circle-fin/app-kit";
 import { decide } from "./decide.js";
-import { getTreasuryUsdcBalance } from "./circle.js";
-import { settleObligationViaMandate } from "./mandate.js";
+import { gateFromCheck, getVaultClient, payViaVault, type VaultPayment } from "./vault.js";
 import { topUpTreasuryLiquidity } from "./liquidity.js";
 import { payForFxRate } from "./nanopayments.js";
 import { getSupabaseServerClient } from "./supabase.js";
 import { toObligation, type NewAgentDecisionRow, type ObligationRow } from "./types.js";
 
 export interface EvaluateConfig {
+  /** The agent's Circle wallet. It is the vault's operator: it signs vault.pay() and holds gas only, never the treasury. */
   walletId: string;
   walletAddress: string;
   /**
-   * MandateEscrow, not ObligationEscrow: pay_now settles by creating and
-   * releasing a mandate (see settleObligationViaMandate in mandate.ts),
-   * pulling directly from the treasury wallet's own USDC balance rather
-   * than a separate pre-funded escrow pool. ObligationEscrow is still
-   * deployed and tested but is no longer in this live settlement path.
+   * The AgentVault that holds the treasury and enforces the owner's spending
+   * rules (per-payment cap, daily cap, payee allowlist, pause). pay_now
+   * settles by calling vault.pay(), which creates and releases a MandateEscrow
+   * mandate atomically. The balance the agent decides against is the vault's.
    */
-  mandateEscrowAddress: `0x${string}`;
+  vaultAddress: `0x${string}`;
   reserveThresholdUsdc: number;
   payAheadWindowDays: number;
   /** Omit to skip the nanopayment rate consultation on convert_currency obligations. */
@@ -25,7 +24,7 @@ export interface EvaluateConfig {
   /**
    * Omit to leave request_liquidity as a flag-only decision (no top-up
    * attempted). When set, a request_liquidity decision triggers a real CCTP
-   * bridge from this Circle-custodied wallet into the treasury wallet — see
+   * bridge from this Circle-custodied wallet into the vault — see
    * topUpTreasuryLiquidity in liquidity.ts.
    */
   liquidity?: { sourceChain: BridgeChain; sourceAddress: string };
@@ -55,8 +54,9 @@ export function wasClaimed(rows: unknown[] | null): boolean {
  * the Vercel Cron route (apps/web) so there's exactly one implementation.
  */
 export async function evaluatePendingObligations(config: EvaluateConfig): Promise<EvaluateSummary> {
-  const { walletId, walletAddress, mandateEscrowAddress, reserveThresholdUsdc, payAheadWindowDays, oracle, liquidity } =
+  const { walletId, walletAddress, vaultAddress, reserveThresholdUsdc, payAheadWindowDays, oracle, liquidity } =
     config;
+  const vault = getVaultClient(vaultAddress);
   const supabase = getSupabaseServerClient();
 
   const { data: obligations, error } = await supabase
@@ -79,10 +79,10 @@ export async function evaluatePendingObligations(config: EvaluateConfig): Promis
     // log why, and move on to the next one.
     let result: ReturnType<typeof decide> | undefined;
     try {
-      // The treasury wallet's own USDC balance, not a separate escrow pool —
-      // pay_now settles via MandateEscrow, which pulls directly from this
-      // wallet per mandate (see settleObligationViaMandate below).
-      const treasuryBalanceUsdc = await getTreasuryUsdcBalance(walletId);
+      // The treasury is the vault's USDC balance. The agent's own wallet only
+      // holds gas, so its balance says nothing about what can be paid.
+      const policy = await vault.getPolicy();
+      const treasuryBalanceUsdc = Number(policy.balanceUsdc);
 
       result = decide({
         obligation: row,
@@ -95,6 +95,29 @@ export async function evaluatePendingObligations(config: EvaluateConfig): Promis
       let txHash: string | undefined;
       let reasoning = result.reasoning;
       let signals: Record<string, unknown> = result.signals;
+
+      if (result.action === "pay_now") {
+        // decide() knows the balance, the due date and the reserve floor. The
+        // vault adds the owner's rules on top. Ask it first, without spending
+        // anything, so a payment it would refuse becomes a logged "hold"
+        // (the obligation stays pending for the next pass) instead of a
+        // reverted transaction.
+        const check = await vault.checkPay(
+          { to: row.destinationAddress, amountUsdc: row.amount.toFixed(6) },
+          walletAddress as `0x${string}`
+        );
+        const gate = gateFromCheck(check);
+        if (gate) {
+          result = { ...result, action: gate.action, reasoning: `${result.reasoning} ${gate.reasoning}` };
+          reasoning = result.reasoning;
+          signals = {
+            ...signals,
+            heldByVault: check.ok ? null : check.code,
+            vaultAvailableUsdc: policy.availableUsdc,
+            vaultBalanceUsdc: policy.balanceUsdc,
+          };
+        }
+      }
 
       if (result.action === "pay_now") {
         // Atomically claim this obligation before settling, so two overlapping
@@ -116,25 +139,26 @@ export async function evaluatePendingObligations(config: EvaluateConfig): Promis
           continue;
         }
 
-        let mandateId: string | undefined;
+        let payment: VaultPayment;
         try {
-          const result = await settleObligationViaMandate({
+          payment = await payViaVault({
             walletId,
-            ownerAddress: walletAddress as `0x${string}`,
-            mandateEscrowAddress,
+            vaultAddress,
             obligationId: row.id,
             destinationAddress: row.destinationAddress,
             amountUsdc: row.amount,
           });
-          txHash = result.transactionId;
-          mandateId = result.mandateId;
         } catch (err) {
-          // The claim succeeded but nothing was actually submitted on-chain,
-          // so it's safe to release the claim for the next pass to retry
-          // rather than leaving it stuck at "scheduled" forever.
+          // payViaVault only throws if Circle never accepted the transaction,
+          // so nothing was submitted on-chain and it is safe to release the
+          // claim for the next pass to retry. Once a transaction is accepted
+          // it never throws, so a slow confirmation cannot be mistaken for a
+          // failure and paid a second time.
           await supabase.from("obligations").update({ status: "pending" }).eq("id", row.id);
           throw err;
         }
+        txHash = payment.transactionId;
+        const mandateId = payment.mandateId ?? undefined;
 
         // Insert the decision row right away, not after the loop body's
         // other branches — Circle's webhook can (and on testnet, does)
@@ -149,7 +173,9 @@ export async function evaluatePendingObligations(config: EvaluateConfig): Promis
         const payNowDecisionRow: NewAgentDecisionRow = {
           obligation_id: row.id,
           action: result.action,
-          reasoning: mandateId ? `${reasoning} Settled via MandateEscrow (mandate #${mandateId}).` : reasoning,
+          reasoning: mandateId
+            ? `${reasoning} Paid through the vault as MandateEscrow mandate #${mandateId}.`
+            : `${reasoning} Submitted through the vault; the mandate appears once the transaction confirms.`,
           signals: mandateId ? { ...signals, mandateId } : signals,
           tx_hash: txHash ?? null,
         };
@@ -187,7 +213,7 @@ export async function evaluatePendingObligations(config: EvaluateConfig): Promis
           amountUsdc: shortfallUsdc,
           sourceChain: liquidity.sourceChain,
           sourceAddress: liquidity.sourceAddress,
-          treasuryAddress: walletAddress,
+          treasuryAddress: vaultAddress,
         });
         signals = {
           ...signals,
@@ -197,7 +223,7 @@ export async function evaluatePendingObligations(config: EvaluateConfig): Promis
         };
         reasoning =
           `${reasoning} Bridged ${shortfallUsdc.toFixed(2)} USDC from ${liquidity.sourceChain} via CCTP into ` +
-          `the treasury wallet. Will settle via MandateEscrow on the next evaluation pass now that the ` +
+          `the vault. Will pay through it on the next evaluation pass now that the ` +
           `balance covers it.`;
       }
 

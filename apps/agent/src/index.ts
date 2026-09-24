@@ -13,9 +13,9 @@ async function main() {
   if (!walletId) {
     throw new Error("TREASURY_WALLET_ID is not set — run the wallet setup step first.");
   }
-  const mandateEscrowAddress = process.env.MANDATE_ESCROW_ADDRESS as `0x${string}` | undefined;
-  if (!mandateEscrowAddress) {
-    throw new Error("MANDATE_ESCROW_ADDRESS is not set — deploy MandateEscrow first.");
+  const vaultAddress = process.env.VAULT_ADDRESS as `0x${string}` | undefined;
+  if (!vaultAddress) {
+    throw new Error("VAULT_ADDRESS is not set — deploy AgentVault first (see the README).");
   }
 
   const walletAddress = process.env.TREASURY_WALLET_ADDRESS;
@@ -31,7 +31,7 @@ async function main() {
   const summary = await evaluatePendingObligations({
     walletId,
     walletAddress,
-    mandateEscrowAddress,
+    vaultAddress,
     reserveThresholdUsdc: requireEnvNumber(process.env.TREASURY_RESERVE_USDC, "TREASURY_RESERVE_USDC"),
     payAheadWindowDays: requireEnvNumber(process.env.AGENT_PAY_AHEAD_WINDOW_DAYS, "AGENT_PAY_AHEAD_WINDOW_DAYS"),
     oracle: oracleUrl && x402Key ? { url: oracleUrl, privateKey: x402Key } : undefined,
