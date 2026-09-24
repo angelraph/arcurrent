@@ -2,27 +2,32 @@
 
 ```mermaid
 flowchart TD
-    U["Dashboard<br/>Add obligation"] --> DB[("Supabase<br/>obligations table")]
+    U["Dashboard<br/>Add obligation (owner passcode)"] --> DB[("Supabase<br/>obligations table")]
     CRON["Vercel Cron (daily)"] --> LOOP
     MANUAL["apps/agent (manual run)"] --> LOOP
-    DB --> LOOP["Agent decision loop<br/>decide.ts + evaluate.ts<br/>balance · due date · reserve floor"]
+    DB --> LOOP["Agent decision loop<br/>decide.ts + evaluate.ts<br/>vault balance · due date · reserve floor"]
 
-    LOOP -->|pay_now| SETTLE["settleObligationViaMandate()"]
+    LOOP -->|pay_now| GATE{"vault.checkPay()<br/>would the rules allow it?"}
+    GATE -->|no| HOLD["logged as wait or insufficient_funds<br/>obligation stays pending"]
+    GATE -->|yes| SETTLE["payViaVault()"]
     LOOP -->|convert_currency| ORACLE["x402 nanopayment<br/>to rate oracle (apps/oracle)"]
-    LOOP -->|request_liquidity| BRIDGE["CCTP bridge<br/>disabled on mainnet for now"]
+    LOOP -->|request_liquidity| BRIDGE["CCTP bridge into the vault<br/>disabled on mainnet for now"]
     LOOP -->|wait| DB
 
-    SETTLE -->|signs via| WALLET["Treasury Wallet<br/>Circle Developer-Controlled<br/>Live environment, Arc mainnet"]
-    WALLET -->|"approve (once) · createMandate · release"| MANDATE["MandateEscrow<br/>open, permissionless · Arc mainnet"]
+    SETTLE -->|signs as operator| WALLET["Agent wallet<br/>Circle Developer-Controlled<br/>holds gas only, never the treasury"]
+    WALLET -->|"pay(to, amount, ref)"| VAULT["AgentVault<br/>holds the treasury<br/>per-payment cap · daily cap · allowlist · pause"]
+    OWNER["Owner wallet<br/>sets the rules · funds · withdraws · pauses"] -->|controls| VAULT
+    VAULT -->|"createMandate + release, one transaction"| MANDATE["MandateEscrow<br/>open, permissionless · Arc mainnet"]
 
-    MANDATE -->|pays| FULFILLER["Fulfiller / vendor address"]
+    MANDATE -->|pays| FULFILLER["Payee / vendor address"]
     MANDATE -->|updates| REP[("on-chain reputation ledger<br/>reputationOf(address)")]
 
     MANDATE -.->|tx confirms| CW["Circle"]
     CW -->|signed webhook| WEBHOOK["/api/circle/webhook<br/>verifies X-Circle-Signature"]
     WEBHOOK -->|scheduled to settled| DB
 
-    DB --> DASH["Dashboard<br/>live balances, decisions"]
+    DB --> DASH["Dashboard<br/>vault rules and live allowance,<br/>decisions, mandates"]
+    VAULT -.->|live on-chain read| DASH
     MANDATE -.->|live on-chain read, not DB| DASH
 ```
 
@@ -35,7 +40,14 @@ it open), a fulfiller posts proof, the funder releases atomically with an option
 multi-destination split, refund-on-deadline, and every outcome updates an on-chain
 reputation ledger. It's not project-owned.
 
-Arcurrent's treasury agent is the first real caller of it: it watches a company's
+Arcurrent's treasury agent is the first real caller of it, and it is held on a short
+leash: the treasury lives in an `AgentVault`, an on-chain spending policy. The owner
+(a wallet you control) sets a per-payment cap, a daily cap that refills continuously,
+a payee allowlist and a pause switch; the agent's own wallet can only call `pay()`
+inside those rules and can never withdraw. If the agent's credentials leaked, the worst
+case is a number the owner chose, not the balance.
+
+The agent itself: it watches a company's
 payment obligations, decides when and how to settle them based on real signals
 (balance, due dates, FX rate movement), converts currency via StableFX when a payment
 isn't USDC-denominated, sources liquidity across chains via Circle Bridge Kit/Gateway
@@ -59,6 +71,7 @@ Live dashboard: **https://arcurrent.site**
 | Cross-chain liquidity | `@circle-fin/app-kit` (Bridge Kit) via `@circle-fin/adapter-circle-wallets` | `kit.bridge()` signs through the same Circle-custodied wallets the rest of the app uses, no private key held for either side of the bridge |
 | Nanopayments | `@circle-fin/x402-batching` (x402 protocol) | Real, self-serve, has a working Circle reference impl (`arc-nanopayments`) |
 | FX conversion | StableFX (gated, see below) | Behind an adapter interface until access is granted |
+| Treasury custody | `AgentVault` (owner, operator, caps, allowlist, pause) | The agent's signing wallet holds only gas, so leaked credentials are bounded by rules the owner set on-chain |
 | Contracts | Hardhat 3 + viem | Foundry's native Windows install path was too much friction for solo/4-week scope |
 
 See [docs/STACK.md](docs/STACK.md) for the full verification notes (chain ID, RPC,
@@ -76,14 +89,15 @@ apps/
                decision (real payment, real rate; StableFX itself stays gated)
 packages/
   contracts/   Hardhat 3 project: MandateEscrow.sol, the open settlement primitive
-               (live on Arc mainnet), and ObligationEscrow.sol, the earlier
+               (live on Arc mainnet), AgentVault.sol, the spending policy the
+               agent's treasury sits in, and ObligationEscrow.sol, the earlier
                single-owner pool it generalizes (still deployed and tested on
                testnet, superseded as the live settlement path -- see Status)
   shared/      Shared types + Arc network config used by web and agent
-  mandate-sdk/ Typed viem client for MandateEscrow: reads, and writes with spend
-               caps, exact-amount approvals and simulate-first error handling
+  mandate-sdk/ Typed viem client for MandateEscrow and AgentVault: reads, and writes
+               with spend caps, exact-amount approvals and simulate-first errors
   mandate-mcp/ MCP server exposing MandateEscrow to any AI agent: read-only by
-               default, fund-moving tools only when explicitly enabled
+               default; with a vault, the only way to pay is vault_pay, bounded on-chain
 ```
 
 ## Status
@@ -97,15 +111,15 @@ mainnet**:
   agent's decision log with links to Arc's mainnet explorer, and a live on-chain read
   of the Mandates table (not this project's own bookkeeping -- see below).
 - The evaluation loop (`packages/shared/src/evaluate.ts`, built on the unit-tested
-  `decide.ts`) reads pending obligations, decides against the treasury wallet's real
+  `decide.ts`) reads pending obligations, decides against the vault's real
   USDC balance, due date, and a configurable reserve floor, and, when it decides to
-  pay, settles by creating and releasing a mandate on `MandateEscrow`
-  (`settleObligationViaMandate` in `packages/shared/src/mandate.ts`): approve once
-  (max allowance, so it's not paying for an approve transaction on every obligation),
-  `createMandate`, then `release`, with the resulting mandate id read back from the
-  funder's own `MandateCreated` event in the transaction receipt (race-proof against
-  other addresses calling the same permissionless contract, not guessed from
-  `nextMandateId()`). Reasoning + tx hash get written back to the database either way,
+  pay, first asks the vault whether its rules would allow it (a refusal becomes a
+  logged hold and the obligation stays pending), then settles with one
+  `vault.pay()` call (`payViaVault` in `packages/shared/src/vault.ts`), which creates
+  and releases a `MandateEscrow` mandate atomically. The mandate id is read back from
+  the vault's own event in the transaction receipt. Once Circle has accepted a
+  payment it is never released back for a retry, so a slow confirmation cannot cause a
+  double payment. Reasoning + tx hash get written back to the database either way,
   including on a failed evaluation (a per-obligation try/catch logs why and moves on,
   instead of one bad obligation aborting the whole pass). An atomic claim (conditional
   `pending -> scheduled` update) stops two overlapping evaluation passes from both
@@ -124,6 +138,28 @@ mainnet**:
   owner -- the contract has no owner. `ObligationEscrow.sol`, the original
   single-owner pre-funded-pool contract, is still deployed and tested on testnet but
   is no longer in this live settlement path.
+- `AgentVault.sol` (`packages/contracts`) is the treasury and its spending policy. The
+  operator (the agent's Circle wallet) can call only `pay(to, amount, ref)`, inside: a
+  per-payment cap; a daily cap that refills continuously as a token bucket (so there is
+  no midnight at which a full cap can be spent twice in a row); an optional payee
+  allowlist; and a pause switch that the owner or a guardian can throw and only the
+  owner can lift. The operator can never withdraw or change a rule. The owner can
+  always withdraw, even while paused, and ownership moves in two steps. Paying the
+  vault, the escrow or the token address is refused because it would strand funds.
+
+  | If this leaks | What an attacker can do | What limits it |
+  |---|---|---|
+  | Circle API key, entity secret or Vercel env | Spend as the operator | Per-payment cap, daily cap, allowlist; cannot withdraw; the owner pauses or rotates the operator |
+  | The owner wallet | Everything in the vault | Only the owner's own key hygiene (hardware wallet or multisig) and a small balance |
+  | A bug in the vault | Loss up to the vault balance | Small balance, the tests below, and the plain statement that it is not audited |
+
+  It does not judge whether a payment is deserved: a compromised operator can still
+  spend up to the caps on payees the rules allow. Tested with 32 Solidity tests against
+  the real MandateEscrow (including fuzz tests on the cap arithmetic), mutation-checked
+  (four deliberate breakages, each caught), and rehearsed on Arc testnet with 29 checks
+  through the SDK against the live contract. Static analysis (slither) reports nothing
+  beyond the intended zero-address and timestamp notes. **Self-reviewed, not
+  professionally audited**, so keep the vault balance small.
 - A webhook route (`/api/circle/webhook`) moves an obligation from `scheduled` to
   `settled`/`failed` once Circle confirms the onchain transaction. Every request's
   `X-Circle-Signature` is verified (ECDSA-SHA256 over the raw body) before anything is
@@ -236,28 +272,33 @@ below for what changes to actually go live.
 4. Generate a Circle API key + entity secret at
    [console.circle.com](https://console.circle.com) and fill in `CIRCLE_API_KEY` /
    `CIRCLE_ENTITY_SECRET`.
-5. `npm run setup:wallet`: creates the real treasury wallet on Arc Testnet and prints
+5. `npm run setup:wallet`: creates the real agent wallet (the vault's operator) on Arc Testnet and prints
    `TREASURY_WALLET_ID` / `TREASURY_WALLET_ADDRESS` to add to `.env`.
 6. Fund that wallet from the [Circle faucet](https://faucet.circle.com) (select Arc
    Testnet), or once the app is running, the in-app `/faucet` page links to the same
    place.
 7. Generate a throwaway deployer key (`generatePrivateKey()` from `viem/accounts`), fund
    it via the faucet, and set `ARC_TESTNET_DEPLOYER_PRIVATE_KEY`, this pays gas to
-   deploy contracts and is separate from the Circle-custodied treasury wallet above.
+   deploy contracts and is separate from the Circle-custodied agent wallet above.
 8. `npm run deploy:mandate-escrow -w packages/contracts`: deploys `MandateEscrow` to
-   Arc Testnet and prints its address; set `MANDATE_ESCROW_ADDRESS` in `.env` -- this
-   is what the agent actually settles through. (`deploy:obligation-escrow` also exists
-   if you want the legacy single-owner contract too; not required for the agent to
-   work.)
-9. Run `npm run mandate:demo -- <escrowAddress>` once (needs
+   Arc Testnet and prints its address; set `MANDATE_ESCROW_ADDRESS` in `.env`.
+   (`deploy:obligation-escrow` also exists if you want the legacy single-owner contract
+   too; not required for the agent to work.)
+9. Deploy the vault the agent pays from: `npm run deploy:agent-vault -w
+   packages/contracts -- --parameters <file>` with the escrow address, an owner wallet
+   you control, the agent wallet as operator, and the caps (see
+   `ignition/modules/AgentVault.ts`). Set `VAULT_ADDRESS` in `.env`, fund the vault, and
+   approve the payees the agent may pay. `scripts/vault-rehearsal.ts` runs 29 checks
+   against a fresh testnet deployment if you want to see every rule enforced first.
+10. Run `npm run mandate:demo -- <escrowAddress>` once (needs
    `MANDATE_DEMO_FUNDER_PRIVATE_KEY` / `MANDATE_DEMO_FULFILLER_PRIVATE_KEY`, two
    funded throwaway EOAs -- see `.env.example`) to prove the createMandate -> release
    cycle end to end before wiring up the agent.
-10. Generate a second throwaway EOA (`AGENT_X402_PRIVATE_KEY`) and an address-only
+11. Generate a second throwaway EOA (`AGENT_X402_PRIVATE_KEY`) and an address-only
     `ORACLE_SELLER_ADDRESS` (no key needed, it only receives payments). Fund the
     x402 key with native gas + USDC via the faucet, then run
     `tsx scripts/deposit-gateway.ts <amount>` once to fund its Circle Gateway balance.
-11. `npm run setup:liquidity-wallet`: creates the cross-chain liquidity wallet on Base
+12. `npm run setup:liquidity-wallet`: creates the cross-chain liquidity wallet on Base
     Sepolia and prints `LIQUIDITY_WALLET_ID` / `LIQUIDITY_WALLET_ADDRESS` to add to
     `.env`. Fund it via the [Circle faucet](https://faucet.circle.com) (select Base
     Sepolia). It needs **both** testnet ETH (gas for the CCTP burn call) and USDC (the
@@ -267,9 +308,9 @@ below for what changes to actually go live.
     failing (there's a 45s timeout guard around it in `liquidity.ts`, but that's a
     safety net, not a fix).
     Optional: without this, `request_liquidity` decisions are flagged but not acted on.
-12. `npm run dev:oracle`: starts the rate oracle at `localhost:4000`.
-13. `npm run dev:web`: dashboard at `localhost:3000`.
-14. `npm run dev:agent`: runs one evaluation pass over pending obligations.
+13. `npm run dev:oracle`: starts the rate oracle at `localhost:4000`.
+14. `npm run dev:web`: dashboard at `localhost:3000`.
+15. `npm run dev:agent`: runs one evaluation pass over pending obligations.
 
 ### Deploying (Vercel Cron for autonomous evaluation)
 
@@ -301,20 +342,31 @@ Everything above targets Arc Testnet by default. To actually go live on mainnet:
    confirms before spending real gas; run it yourself in a real terminal, don't pipe
    `yes` into it).
 4. `npm run setup:wallet` again with `ARC_NETWORK=mainnet` set -- this creates a
-   **separate** mainnet treasury wallet under the Live API key; the testnet wallet
-   isn't reachable once `CIRCLE_API_KEY` is Live-scoped. Fund it with real USDC.
-5. Set `MANDATE_ESCROW_ADDRESS`, `TREASURY_WALLET_ID`/`TREASURY_WALLET_ADDRESS`, and
-   `ARC_NETWORK=mainnet` as **production** env vars on Vercel (`vercel env add <NAME>
+   **separate** mainnet agent wallet under the Live API key; the testnet wallet isn't
+   reachable once `CIRCLE_API_KEY` is Live-scoped. It becomes the vault's operator, so
+   it only needs a little USDC for gas.
+5. Deploy the vault: put the escrow address, the **owner** (a wallet you control, ideally
+   hardware; never a key in `.env`), the operator (the agent wallet from step 4), an
+   optional guardian, the caps (base units, 6 decimals) and `allowlistRequired` in a
+   parameters file keyed by `AgentVaultModule`, then `npm run
+   deploy:agent-vault:mainnet -w packages/contracts -- --parameters <file>`. Verify
+   the source on the explorer (method in `docs/STACK.md`). Then, as the owner: fund the
+   vault with a modest amount and approve each payee the agent may pay, from the
+   dashboard's owner panel. Test the rules on testnet first with
+   `scripts/vault-rehearsal.ts`.
+6. Set `VAULT_ADDRESS`, `NEXT_PUBLIC_VAULT_ADDRESS`, `MANDATE_ESCROW_ADDRESS`,
+   `NEXT_PUBLIC_MANDATE_ESCROW_ADDRESS`, `TREASURY_WALLET_ID`/`TREASURY_WALLET_ADDRESS`,
+   `OWNER_SECRET` and `ARC_NETWORK=mainnet` as **production** env vars on Vercel (`vercel env add <NAME>
    production`), not just locally -- and unset/omit `LIQUIDITY_WALLET_ID` there too
    unless you have a real mainnet-side liquidity wallet (see Status above).
-6. Deploy: `vercel --prod` from the repo root, `--project <name>` if the root's own
+7. Deploy: `vercel --prod` from the repo root, `--project <name>` if the root's own
    `.vercel/project.json` happens to be linked to a different project than
    `apps/web`'s (check both before assuming -- redeploying the wrong project by
    accident is an easy mistake in this monorepo).
-7. Register the webhook for real: `tsx scripts/setup-webhook.ts create
+8. Register the webhook for real: `tsx scripts/setup-webhook.ts create
    https://<your-deployment>/api/circle/webhook`. Nothing does this automatically;
    `scripts/setup-webhook.ts list` shows what's currently registered.
-8. If pointing a custom domain at it, `npx vercel domains inspect <domain>` prints
+9. If pointing a custom domain at it, `npx vercel domains inspect <domain>` prints
    the exact DNS record Vercel wants (usually `A @ 76.76.21.21`) and flags nameserver
    problems -- worth running even if the domain "looks" configured, since a
    registrar can silently park a domain (e.g. Namecheap's

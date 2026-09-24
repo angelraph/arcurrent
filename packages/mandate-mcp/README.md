@@ -76,6 +76,41 @@ To let the agent move funds, add a wallet and turn writes on explicitly:
 | `MANDATE_RPC_URL` | Arc's public RPC | Point at your own endpoint if you have one. |
 | `MANDATE_ESCROW_ADDRESS` | the deployed contract | Override only for a fork or redeploy. |
 
+## Vault mode: let an agent pay, inside limits you set on-chain
+
+Set `MANDATE_VAULT_ADDRESS` to an [AgentVault](../contracts/contracts/AgentVault.sol) and the
+server changes shape. `MANDATE_PRIVATE_KEY` becomes the vault's **operator** wallet, which
+holds only gas. The unrestricted create, release and refund tools are **not registered at
+all**; the only way to move funds is `vault_pay`, and the vault refuses anything outside the
+owner's rules no matter what the agent says.
+
+| Tool | What it does |
+|---|---|
+| `get_vault` | The vault's balance, per-payment and daily caps, allowance available right now, allowlist and pause state, and roles. |
+| `check_vault_payment` | Would this payment be allowed right now, and if not, why. No gas, nothing sent. |
+| `vault_pay` | Pay from the vault as one atomic mandate. Needs `MANDATE_ENABLE_WRITES=true`. |
+
+```json
+{
+  "mcpServers": {
+    "mandate-escrow": {
+      "command": "node",
+      "args": ["/absolute/path/to/arcurrent/packages/mandate-mcp/dist/index.js"],
+      "env": {
+        "MANDATE_VAULT_ADDRESS": "0xYourVault",
+        "MANDATE_PRIVATE_KEY": "0xOperatorKeyHoldingOnlyGas",
+        "MANDATE_ENABLE_WRITES": "true"
+      }
+    }
+  }
+}
+```
+
+If that key leaks, an attacker can spend inside the vault's caps and allowlist and nothing
+more, and the owner can pause it or rotate the operator from the dashboard. Compare that
+with plain mode, where the key controls the whole wallet. Add `MANDATE_NETWORK=testnet` with
+`MANDATE_ESCROW_ADDRESS` to run against Arc testnet.
+
 ## Safety model
 
 - **Read-only by default.** With no key, or a key but no `MANDATE_ENABLE_WRITES=true`, the fund-moving tools are not even listed, so the agent cannot try them.

@@ -111,6 +111,57 @@ worth being explicit about what was actually checked rather than leaving it unst
   `MandateEscrow.t.sol`, and a second independent reviewer. Treat this as "self-reviewed
   and unit-tested," not "audited."
 
+## Security self-review: AgentVault.sol (2026-09-24)
+
+Not professionally audited. This is what was actually done, and what was not.
+
+- **What it guarantees.** The operator (the agent's signing wallet) can call exactly
+  one function, `pay(to, amount, ref)`, and only within: a per-payment cap, a daily
+  cap, an optional payee allowlist, and while unpaused. It cannot withdraw, change a
+  rule, or pay the vault, the escrow or the token address (each would strand the
+  funds). The owner alone changes rules and can always withdraw, even while paused. A
+  guardian can pause but never resume. Ownership moves in two steps and cannot be
+  renounced (renouncing would leave the funds with no one able to withdraw them).
+- **Daily cap as a token bucket.** A fixed daily window lets a full cap be spent at
+  23:59 and again at 00:01. The bucket refills continuously at `dailyCap / 1 day` up to
+  `dailyCap`, so spending over any interval is bounded by the cap plus what refilled.
+  Refill rounds down, which is the conservative direction. Changing the limits settles
+  refill under the old cap first and then clamps; raising a cap refills gradually.
+- **Tests.** 32 Solidity tests against the real `MandateEscrow` and a mock USDC: every
+  role and rule, rejection paths, two-step ownership, operator rotation, atomicity of
+  create-and-release, and no stranded funds. Three fuzz suites (256 runs each): total
+  spend never exceeds the starting cap plus refill over random sequences of payments
+  and time jumps, no payment exceeds the per-payment cap, and vault plus payee balances
+  always sum to what was funded.
+- **Mutation check.** The contract was deliberately broken four ways (daily check
+  removed, allowlist check removed, refill without the cap clamp, withdraw open to
+  anyone) and each was caught by the suite (two failing tests per mutant), then
+  restored byte for byte.
+- **Static analysis.** `slither` (0.11.6) reports no reentrancy, access-control,
+  unchecked-call or arithmetic findings. The only notes are two intended choices:
+  `setOperator` / `setGuardian` accept the zero address (that is the "disable" switch,
+  covered by tests) and the timestamp comparisons in the bucket maths (second
+  granularity, so miner manipulation is irrelevant).
+- **Real-chain rehearsal.** `scripts/vault-rehearsal.ts` deployed `MandateEscrow` and
+  `AgentVault` to Arc testnet with throwaway keys and ran 29 checks through the SDK
+  against the live contracts (every rule refused by the SDK and, where checked, by the
+  contract itself; a stranger and the operator failing to change rules; the guardian
+  failing to resume; owner withdraw while paused; operator rotation; two-step
+  ownership). `scripts/vault-mcp-e2e.ts` did the same through a real MCP server
+  subprocess in vault mode.
+- **What compromise costs.** Agent credentials leaking (Circle API key and entity
+  secret, or the Vercel env) lets an attacker spend as the operator, bounded by the
+  caps and allowlist; they cannot withdraw, and the owner can pause or rotate the
+  operator. The owner wallet leaking loses the vault. A contract bug loses at most the
+  vault balance, which is why it should stay small.
+- **Not covered, stated plainly.** No professional audit, no formal verification, no
+  second independent reviewer, and no invariant-suite beyond the fuzz tests above.
+  The vault cannot judge whether a payment is deserved: a compromised operator can
+  still spend up to the caps on allowed payees. USDC is issued by Circle, which can
+  freeze an address; a frozen vault could not move funds (an issuer-level risk shared
+  by every USDC holder, noted rather than mitigated). Mainnet behaviour of the USDC
+  precompile with `forceApprove` was only observed on testnet before deployment.
+
 ## Circle SDKs (all confirmed live on the npm registry, not just in docs)
 
 | Package | Version at scaffold time |

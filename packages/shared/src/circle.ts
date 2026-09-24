@@ -43,7 +43,7 @@ export function getCircleClient(): CircleDeveloperControlledWalletsClient {
   return client;
 }
 
-/** USDC balance (ERC-20 interface) for a treasury wallet, in whole USDC. */
+/** USDC balance (ERC-20 interface) of a Circle wallet, in whole USDC. The agent wallet holds only gas; the treasury is the vault. */
 export async function getTreasuryUsdcBalance(walletId: string): Promise<number> {
   const circle = getCircleClient();
   const res = await circle.getWalletTokenBalance({
@@ -52,114 +52,6 @@ export async function getTreasuryUsdcBalance(walletId: string): Promise<number> 
   });
   const amount = res.data?.tokenBalances?.[0]?.amount;
   return amount ? Number(amount) : 0;
-}
-
-/**
- * USDC balance held by the ObligationEscrow contract — the actual spendable
- * settlement pool, separate from whatever the treasury wallet itself holds
- * (which may include USDC not yet deposited into the escrow). Plain on-chain
- * read via RPC; no Circle API call needed.
- */
-export async function getEscrowUsdcBalance(escrowAddress: `0x${string}`): Promise<number> {
-  const balance = await arcPublicClient.readContract({
-    address: activeNetwork.usdcErc20Address,
-    abi: erc20BalanceAbi,
-    functionName: "balanceOf",
-    args: [escrowAddress],
-  });
-  return Number(balance) / 10 ** activeNetwork.usdcErc20Decimals;
-}
-
-/**
- * Settles an obligation by calling ObligationEscrow.settle(obligationId,
- * destination, amount) from the treasury wallet — a contract-execution
- * transaction, not a plain transfer, so the payout is an on-chain program
- * action (with its own event log) rather than a bare wallet-to-wallet move.
- * Reverts on-chain (surfaced as a FAILED Circle transaction) if the escrow's
- * balance can't cover the amount, or if the caller isn't the escrow's owner.
- */
-export async function settleObligationOnChain(params: {
-  walletId: string;
-  escrowAddress: string;
-  obligationId: string;
-  destinationAddress: string;
-  amountUsdc: number;
-}): Promise<{ transactionId: string }> {
-  const circle = getCircleClient();
-  const amountAtomic = String(Math.round(params.amountUsdc * 10 ** activeNetwork.usdcErc20Decimals));
-  const res = await circle.createContractExecutionTransaction({
-    walletId: params.walletId,
-    contractAddress: params.escrowAddress,
-    abiFunctionSignature: "settle(string,address,uint256)",
-    abiParameters: [params.obligationId, params.destinationAddress, amountAtomic],
-    fee: { type: "level", config: { feeLevel: "MEDIUM" } },
-    // The webhook route matches incoming Circle notifications back to an
-    // obligation via this refId — without it, the webhook has no way to know
-    // which row to update and settlement transactions stay "scheduled"
-    // forever regardless of what actually happens on-chain.
-    refId: params.obligationId,
-  });
-  const transactionId = res.data?.id;
-  if (!transactionId) {
-    throw new Error("Circle createContractExecutionTransaction response did not include a transaction id");
-  }
-  return { transactionId };
-}
-
-/**
- * Approves the escrow to pull `amountUsdc`, then deposits it — the same two
- * Circle contract-execution transactions documented in the README's manual
- * setup step (and scripts/fund-escrow.ts), extracted here so the agent can
- * run them itself after a cross-chain liquidity top-up lands in the treasury
- * wallet. Waits for the approve to land before depositing, since the ERC-20
- * allowance isn't set yet when the deposit call would otherwise execute.
- */
-export async function depositToEscrow(params: {
-  walletId: string;
-  escrowAddress: string;
-  amountUsdc: number;
-}): Promise<{ approveTransactionId: string; depositTransactionId: string }> {
-  const circle = getCircleClient();
-  const amountAtomic = String(Math.round(params.amountUsdc * 10 ** activeNetwork.usdcErc20Decimals));
-
-  const approveRes = await circle.createContractExecutionTransaction({
-    walletId: params.walletId,
-    contractAddress: activeNetwork.usdcErc20Address,
-    abiFunctionSignature: "approve(address,uint256)",
-    abiParameters: [params.escrowAddress, amountAtomic],
-    fee: { type: "level", config: { feeLevel: "MEDIUM" } },
-  });
-  const approveTransactionId = approveRes.data?.id;
-  if (!approveTransactionId) {
-    throw new Error("Circle createContractExecutionTransaction (approve) response did not include a transaction id");
-  }
-
-  // The deposit call reverts if the allowance isn't confirmed on-chain yet.
-  // Poll Circle's own transaction status for the approve to actually reach
-  // CONFIRMED, rather than a fixed sleep -- 8s was a guess against Arc's
-  // confirmation time and could race under RPC slowness (the same condition
-  // the fallback transport further up this file exists to survive). Bounded
-  // to 30s; if it hasn't confirmed by then, fail loud instead of depositing
-  // against an allowance that might not be set yet.
-  await circle.getTransaction({
-    id: approveTransactionId,
-    waitForState: "CONFIRMED",
-    signal: AbortSignal.timeout(30_000),
-  });
-
-  const depositRes = await circle.createContractExecutionTransaction({
-    walletId: params.walletId,
-    contractAddress: params.escrowAddress,
-    abiFunctionSignature: "deposit(uint256)",
-    abiParameters: [amountAtomic],
-    fee: { type: "level", config: { feeLevel: "MEDIUM" } },
-  });
-  const depositTransactionId = depositRes.data?.id;
-  if (!depositTransactionId) {
-    throw new Error("Circle createContractExecutionTransaction (deposit) response did not include a transaction id");
-  }
-
-  return { approveTransactionId, depositTransactionId };
 }
 
 const notificationPublicKeyCache = new Map<string, KeyObject>();

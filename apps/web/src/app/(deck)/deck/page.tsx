@@ -11,6 +11,7 @@ const DECK_HTML = `
   <p class="lede">An open settlement primitive for agents, and the autonomous treasury agent that's already its first live user.</p>
   <div class="footer-row" style="justify-content:center;">
     <span class="tag">MandateEscrow</span>
+    <span class="tag">AgentVault</span>
     <span class="tag">Autonomous Agent</span>
   </div>
 </div>
@@ -21,7 +22,7 @@ const DECK_HTML = `
   <h1>Treasury payments run on trust, not proof.</h1>
   <div class="problem-layout">
     <ol class="points">
-      <li><span class="dot"></span><div><h3>No custody without a chaperone</h3><p>An agent that's supposed to act alone still needs a human to hold the keys or approve the transfer.</p></div></li>
+      <li><span class="dot"></span><div><h3>No safe way to leave an agent alone</h3><p>Either a human approves every transfer, or the agent holds keys that, if they leak, empty the whole treasury.</p></div></li>
       <li><span class="dot"></span><div><h3>No provable record</h3><p>A wrong payment is a support ticket and a spreadsheet, not a transaction anyone outside the company can check.</p></div></li>
       <li><span class="dot"></span><div><h3>No settlement fast enough to watch closely</h3><p>If checking a balance costs almost as much as the payment, nobody checks it often enough to catch problems early.</p></div></li>
     </ol>
@@ -37,9 +38,10 @@ const DECK_HTML = `
   <span class="eyebrow">The answer</span>
   <h1>A ledger-writing machine, not a script with a cron job.</h1>
   <p class="lede">
-    Arcurrent reads what's owed, decides from the real treasury balance, the due date, and a reserve
-    floor, and settles by creating and releasing a mandate on MandateEscrow, an open primitive any
-    address can fund, fulfill, or read.
+    Arcurrent reads what's owed, decides from the real vault balance, the due date, and a reserve
+    floor, and pays from an on-chain vault it can never withdraw from and can only spend inside limits
+    its owner set. Every payment is a mandate on MandateEscrow, an open primitive any address can
+    fund, fulfill, or read.
   </p>
   <p>Nothing here is simulated. Every figure on the next slide is a real transaction hash on Arc mainnet, not a mock.</p>
 </div>
@@ -101,11 +103,15 @@ const DECK_HTML = `
 <div class="slide" id="s5">
   <span class="slide-index">05 / 12</span>
   <span class="eyebrow">How it works</span>
-  <h1>Four real primitives, one decision loop.</h1>
+  <h1>Six real pieces, one decision loop.</h1>
   <div class="grid-2">
     <div class="card">
-      <h3>Developer-Controlled Wallets</h3>
-      <p>The treasury and liquidity wallets are Circle-custodied. No private key lives in this codebase.</p>
+      <h3>Circle wallet as operator</h3>
+      <p>The agent signs from a Circle-custodied wallet that holds only gas. No private key lives in this codebase, and nothing worth stealing lives in the wallet.</p>
+    </div>
+    <div class="card">
+      <h3>AgentVault</h3>
+      <p>The treasury sits in a contract. The owner sets a per-payment cap, a daily cap that refills continuously, a payee allowlist and a pause switch. The agent can only pay inside them and can never withdraw, so leaked credentials are bounded by numbers the owner chose.</p>
     </div>
     <div class="card">
       <h3>MandateEscrow</h3>
@@ -118,6 +124,10 @@ const DECK_HTML = `
     <div class="card">
       <h3>x402 nanopayments</h3>
       <p>The agent pays a sub-cent fee for the live FX rate it needs before acting on a foreign bill.</p>
+    </div>
+    <div class="card">
+      <h3>SDK and MCP server</h3>
+      <p>A typed client and an MCP server let any project or AI agent use MandateEscrow, or pay through a vault, with spend caps and simulate-first errors. In vault mode the only way to pay is one bounded tool.</p>
     </div>
   </div>
   <p class="lede" style="margin-top: 24px;">
@@ -155,7 +165,8 @@ const DECK_HTML = `
   <span class="eyebrow">Status</span>
   <h1>What's real, what's gated.</h1>
   <ul class="plain" style="max-width: 640px;">
-    <li><span class="status-pill ok">real</span><span class="v">Live on Arc mainnet: Circle Live-environment wallets, MandateEscrow, x402 nanopayments, autonomous cron, webhook-confirmed settlement end to end</span></li>
+    <li><span class="status-pill ok">real</span><span class="v">Live on Arc mainnet: Circle Live-environment wallet as operator, AgentVault, MandateEscrow (source verified), x402 nanopayments, autonomous cron, webhook-confirmed settlement end to end, a public SDK and MCP server</span></li>
+    <li><span class="status-pill gap">unaudited</span><span class="v">The contracts are self-reviewed, not professionally audited: static analysis, fuzz and mutation-checked tests, and a real-chain rehearsal. The vault holds a small balance for that reason.</span></li>
     <li><span class="status-pill gap">gated</span><span class="v">StableFX: RFQ-only access, no self-serve signup yet. Non-USDC obligations are correctly flagged, not yet auto-settled. CCTP liquidity top-up currently disabled on mainnet pending a funded source chain.</span></li>
   </ul>
 </div>
@@ -171,7 +182,7 @@ const DECK_HTML = `
     </div>
     <div class="card">
       <h3>Technical credibility</h3>
-      <p>Real contracts, real mainnet deployment, a real autonomous caller &middot; not a testnet-only illustration.</p>
+      <p>Real contracts, real mainnet deployment, a real autonomous caller &middot; not a testnet-only illustration. The vault's cap maths is fuzz-tested and mutation-checked, and every rule was attacked on a live chain.</p>
     </div>
     <div class="card">
       <h3>Depth</h3>
@@ -188,6 +199,7 @@ const DECK_HTML = `
   <span class="slide-index">10 / 12</span>
   <span class="eyebrow">What's next</span>
   <h1>Where this goes from here.</h1>
+  <div class="kv-line"><span class="k">Review</span><span class="v">An independent security review of AgentVault and MandateEscrow before either holds more than a small balance</span></div>
   <div class="kv-line"><span class="k">Other callers</span><span class="v">MandateEscrow is open today; the next real proof is a second, unrelated agent funding or fulfilling a mandate</span></div>
   <div class="kv-line"><span class="k">StableFX</span><span class="v">Auto-settle non-USDC obligations once access lands</span></div>
   <div class="kv-line"><span class="k">Liquidity</span><span class="v">A funded mainnet-side source chain, re-enabling the CCTP top-up path</span></div>
@@ -199,7 +211,7 @@ const DECK_HTML = `
   <span class="eyebrow">The ask</span>
   <h1>What we're looking for.</h1>
   <div class="ask-list">
-    <div class="ask-item"><span class="mark">01</span><div><h3>The microgrant</h3><p>Non-dilutive fuel to keep building the primitive out, not just the agent on top of it.</p></div></div>
+    <div class="ask-item"><span class="mark">01</span><div><h3>The microgrant</h3><p>Non-dilutive fuel to keep building the primitive out, and to pay for an independent review of the contracts.</p></div></div>
     <div class="ask-item"><span class="mark">02</span><div><h3>StableFX access</h3><p>The one piece that's flagged, not faked. This closes the last gap between "correctly identifies" and "fully autonomous."</p></div></div>
     <div class="ask-item"><span class="mark">03</span><div><h3>Introductions</h3><p>To a real treasury with genuine recurring obligations to pilot against, and to other Arc builders whose agents could be MandateEscrow's second caller.</p></div></div>
   </div>

@@ -2,9 +2,14 @@ import Link from "next/link";
 
 const KITS = [
   {
-    name: "Developer-Controlled Wallets",
+    name: "Circle wallet as the vault's operator",
     detail:
-      "The treasury wallet is a real Circle-custodied wallet, Live environment, the agent signs from directly. No private key lives in this codebase.",
+      "The agent signs from a real Circle-custodied wallet, Live environment, that holds only gas. No private key lives in this codebase, and the wallet holds nothing worth stealing.",
+  },
+  {
+    name: "AgentVault, bounded autonomy",
+    detail:
+      "The treasury lives in a contract. The owner sets a per-payment cap, a daily cap that refills continuously, a payee allowlist and a pause switch; the agent can only pay inside them and can never withdraw. Leaked credentials are bounded by numbers the owner chose.",
   },
   {
     name: "App Kit / Bridge Kit (CCTP)",
@@ -20,6 +25,11 @@ const KITS = [
     name: "MandateEscrow, an open primitive",
     detail:
       "Every payment is created and released as its own mandate on a permissionless contract: fund it, prove fulfillment, release atomically, with a reputation ledger that updates on-chain. Not project-owned · any address can fund, fulfill, or read it, and this agent is just its first live caller.",
+  },
+  {
+    name: "SDK and MCP server",
+    detail:
+      "A typed client and an MCP server let any project or AI agent use MandateEscrow, or pay through a vault, with spend caps and simulate-first errors. In vault mode the only way to pay is one tool, bounded on-chain.",
   },
 ];
 
@@ -60,23 +70,25 @@ export function Explainer() {
             <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-accent-soft text-xs font-semibold text-accent">
               1
             </span>
-            Open the dashboard and add an obligation: a vendor, an amount, a due date, USDC or EURC.
+            Open the dashboard and read the agent&apos;s vault: its balance, the limits it can never exceed,
+            and how much of today&apos;s allowance is left, all read from the chain.
           </li>
           <li className="flex gap-3">
             <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-accent-soft text-xs font-semibold text-accent">
               2
             </span>
-            Watch the decision log. The agent evaluates it against the real treasury balance and
-            reserve floor, then pays it, waits, or flags a liquidity shortfall if the balance would
-            run short.
+            Watch the decision log. The agent evaluates each obligation against the vault&apos;s real
+            balance, the reserve floor and the vault&apos;s own rules, then pays it, waits, or holds it
+            for the owner when a rule says no.
           </li>
           <li className="flex gap-3">
             <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-accent-soft text-xs font-semibold text-accent">
               3
             </span>
-            Click any transaction hash to verify it yourself on Arc&apos;s mainnet explorer, or check the
-            Mandates table directly · it&apos;s a live read of on-chain state, not this project&apos;s own
-            bookkeeping. Nothing here is simulated.
+            Try it yourself: connect a wallet and fund a mandate with your own USDC, or make a
+            payment-request link to get paid. Click any transaction hash to verify it on Arc&apos;s mainnet
+            explorer. The Mandates table is a live read of on-chain state, not this project&apos;s own
+            bookkeeping, and nothing here is simulated.
           </li>
         </ol>
         <Link

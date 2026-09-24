@@ -61,6 +61,52 @@ await client.refund(mandateId);
 
 Helpers: `parseUsdc`, `formatUsdc`, `hashProof`, `resolveSplits`, plus the raw `mandateEscrowAbi`, `ARC_MAINNET` and `arcMainnetChain` for wiring into other viem code.
 
+## AgentVault: pay from a treasury that bounds you
+
+`VaultClient` talks to an **AgentVault**, a contract that holds a treasury and lets an
+agent (the *operator*) pay only inside rules a human (the *owner*) set on-chain: a
+per-payment cap, a daily cap that refills continuously, an optional payee allowlist, and a
+pause switch. The operator can never withdraw or change a rule, so leaked agent
+credentials are bounded by numbers the owner chose, not by the balance.
+
+```ts
+import { VaultClient } from "@arcurrent/mandate-sdk";
+
+// The agent: an operator key that holds only gas.
+const agent = VaultClient.fromPrivateKey(process.env.OPERATOR_KEY as `0x${string}`, {
+  vaultAddress: "0xYourVault",
+});
+
+const policy = await agent.getPolicy();   // balance, caps, allowance available right now, paused, roles
+
+// Ask first: never throws, spends no gas, and says exactly why a payment would be refused.
+const check = await agent.checkPay({ to: "0xVendor", amountUsdc: "0.5" });
+if (!check.ok) console.log(check.code, check.message); // e.g. OVER_DAILY_ALLOWANCE: refills in ~40 minutes
+
+// One atomic transaction: creates and releases a MandateEscrow mandate.
+const { mandateId, explorerUrl } = await agent.pay({ to: "0xVendor", amountUsdc: "0.5", ref: "invoice-42" });
+
+// The owner (a different wallet): rules, funds, emergency stop.
+const owner = VaultClient.fromPrivateKey(process.env.OWNER_KEY as `0x${string}`, { vaultAddress: "0xYourVault" });
+await owner.setLimits({ perPaymentUsdc: "2", dailyUsdc: "10" });
+await owner.setPayee("0xVendor", true);
+await owner.pause();          // the owner or the guardian; only the owner resumes
+await owner.withdraw("0xOwner", "5"); // works even while paused
+```
+
+| Method | Who | What it does |
+|---|---|---|
+| `getPolicy()`, `isPayeeAllowed()`, `getWiring()` | anyone | Live rules, balance and the escrow and token the vault is wired to. |
+| `checkPay({ to, amountUsdc })` | anyone | Would this payment go through right now, and if not, why. |
+| `pay({ to, amountUsdc, ref? })` | operator | Pays through the vault; refused up front with a specific code if any rule would reject it. |
+| `setLimits`, `setAllowlistRequired`, `setPayee(s)`, `setOperator`, `setGuardian`, `unpause`, `withdraw`, `transferOwnership` | owner | Change rules, rotate wallets, take funds out. |
+| `pause()` | owner or guardian | Stop all payments. |
+| `acceptOwnership()` | pending owner | Second step of a handover. |
+
+Extra error codes for the vault: `PAUSED`, `OVER_PER_PAYMENT_CAP`, `OVER_DAILY_ALLOWANCE`,
+`PAYEE_NOT_ALLOWED`, `INVALID_PAYEE`. Pass `chain: arcTestnetChain` (and your own escrow and
+vault addresses) to work against Arc testnet.
+
 ## Built for callers that cannot afford surprises
 
 - **Spend cap.** `maxAmountUsdc` rejects any single `createMandate` above it before any read or transaction.
