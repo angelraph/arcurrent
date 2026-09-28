@@ -64,8 +64,9 @@ export function SiteFooter() {
               <Internal href="/dashboard">Dashboard</Internal>
               <Internal href="/request">Payment request links</Internal>
               <Internal href="/deck">Pitch deck</Internal>
-              <Internal href="/#roadmap">Roadmap</Internal>
-              <Internal href="/#faq">FAQ</Internal>
+              <Internal href="/how-it-works">How it works</Internal>
+              <Internal href="/roadmap">Roadmap</Internal>
+              <Internal href="/faq">FAQ</Internal>
             </Column>
             <Column title="Build on it">
               <External href={`${REPO}/tree/main/packages/mandate-sdk`}>TypeScript SDK</External>

@@ -12,7 +12,7 @@ export function Nav() {
         style={{ background: "linear-gradient(90deg, #6a1841 0%, #a62f4b 40%, #d85a35 78%, #f39a36 100%)" }}
       >
         AgentVault is live on Arc mainnet: the agent pays inside limits you set on-chain.{" "}
-        <Link href="/#bounded" className="underline decoration-white/50 underline-offset-2 hover:decoration-white">
+        <Link href="/how-it-works#bounded" className="underline decoration-white/50 underline-offset-2 hover:decoration-white">
           See how it is bounded
         </Link>
       </div>
@@ -27,10 +27,13 @@ export function Nav() {
               <Link href="/dashboard" className={linkClass}>
                 Dashboard
               </Link>
-              <Link href="/#roadmap" className={linkClass}>
+              <Link href="/how-it-works" className={linkClass}>
+                How it works
+              </Link>
+              <Link href="/roadmap" className={linkClass}>
                 Roadmap
               </Link>
-              <Link href="/#faq" className={linkClass}>
+              <Link href="/faq" className={linkClass}>
                 FAQ
               </Link>
               <Link href="/deck" className={linkClass}>

@@ -295,6 +295,60 @@ export function BuildOnIt() {
   );
 }
 
+// -------------------------------------------------------------------- explore
+
+const EXPLORE = [
+  {
+    href: "/how-it-works",
+    eyebrow: "Mechanism",
+    title: "How it works",
+    body: "The four-step loop, why it runs on Arc, what a compromised agent can and cannot do, and the stack underneath.",
+  },
+  {
+    href: "/roadmap",
+    eyebrow: "Direction",
+    title: "Roadmap",
+    body: "What is shipped, what is next, and what has to happen before it holds real volume.",
+  },
+  {
+    href: "/faq",
+    eyebrow: "Answers",
+    title: "FAQ",
+    body: "Plain answers to the questions people actually ask about custody, risk and audits.",
+  },
+  {
+    href: "/dashboard",
+    eyebrow: "Live",
+    title: "Dashboard",
+    body: "Real balances, real obligations, real agent decisions, read straight from Arc mainnet.",
+  },
+];
+
+/** A real page behind every card, not another anchor on this one. */
+export function ExploreGrid() {
+  return (
+    <Section id="explore">
+      <SectionHeader eyebrow="Go deeper" title="Four short pages, not one long scroll." />
+      <div className="grid gap-px overflow-hidden rounded-xl border border-border bg-border sm:grid-cols-2 lg:grid-cols-4">
+        {EXPLORE.map((e) => (
+          <Link
+            key={e.href}
+            href={e.href}
+            className="group flex flex-col gap-3 bg-surface p-6 transition hover:bg-background"
+          >
+            <p className="eyebrow">{e.eyebrow}</p>
+            <h3 className="font-display text-lg font-medium leading-snug tracking-[-0.015em]">{e.title}</h3>
+            <p className="text-sm leading-relaxed text-muted">{e.body}</p>
+            <span className="mt-auto flex items-center gap-1 text-sm font-semibold text-accent opacity-0 transition group-hover:opacity-100">
+              Open <span aria-hidden>→</span>
+            </span>
+          </Link>
+        ))}
+      </div>
+    </Section>
+  );
+}
+
 // ---------------------------------------------------------- under the hood
 
 const PARTS = [

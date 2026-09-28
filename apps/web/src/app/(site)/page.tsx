@@ -2,18 +2,9 @@ import { getActiveArcNetwork } from "@arcurrent/shared";
 import { getMandatesWithReputation, getRecentDecisions } from "@/lib/data";
 import { formatUsdc } from "@/lib/format";
 import { Hero } from "../hero";
-import {
-  BoundedAutonomy,
-  BuildOnIt,
-  HowItWorks,
-  LiveStrip,
-  UnderTheHood,
-  WhyArc,
-  type LiveStats,
-} from "../landing-sections";
+import { ExploreGrid, LiveStrip, type LiveStats } from "../landing-sections";
 import { LiveLedger, type LedgerData } from "../live-ledger";
 import { Nav } from "../nav";
-import { Faq, Roadmap } from "../roadmap-faq";
 
 // The strip reads the chain; refreshing it every few minutes is plenty and
 // keeps the page fast instead of hitting the RPC on every visit.
@@ -50,6 +41,10 @@ async function readLedger(): Promise<LedgerData | null> {
   }
 }
 
+// The landing page is a pitch, not the whole site: hero, live proof, then a
+// hub to the real pages behind it (how it works, roadmap, FAQ, dashboard).
+// Each of those has its own URL, its own title, and its own scroll position,
+// on purpose, instead of everything living as anchors on this one page.
 export default async function Home() {
   const [stats, ledger] = await Promise.all([readLiveStats(), readLedger()]);
   return (
@@ -58,14 +53,8 @@ export default async function Home() {
       <main>
         <Hero />
         <LiveStrip stats={stats} />
-        <HowItWorks />
         <LiveLedger data={ledger} />
-        <WhyArc />
-        <BoundedAutonomy />
-        <UnderTheHood />
-        <BuildOnIt />
-        <Roadmap />
-        <Faq />
+        <ExploreGrid />
       </main>
     </>
   );
