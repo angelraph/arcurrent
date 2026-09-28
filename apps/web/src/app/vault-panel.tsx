@@ -51,6 +51,15 @@ export function VaultPanel({ vault, unavailable }: { vault: VaultOverview | null
         </p>
       ) : (
         <>
+          {Number(vault.balanceUsdc) === 0 && (
+            <p className="rounded-lg border border-dashed border-border bg-background px-3 py-2 text-xs text-muted">
+              Not yet funded, by design. The treasury stays empty until the project has real adoption to
+              justify holding funds; the caps, allowlist and pause it would be bound by are already live on
+              this contract and covered by 32 automated tests, source verified on the explorer link below. To
+              try the mechanism today with real money, in your own custody, use MandateEscrow with your own
+              wallet in the panel above: it never touches this vault.
+            </p>
+          )}
           <dl className="grid grid-cols-2 gap-4 sm:grid-cols-4">
             <Stat label="Vault balance" value={`$${formatUsdc(Number(vault.balanceUsdc))}`} hint="What the agent can pay from" />
             <Stat label="Per payment" value={`$${formatUsdc(Number(vault.perPaymentCapUsdc))}`} hint="Most it can send at once" />
