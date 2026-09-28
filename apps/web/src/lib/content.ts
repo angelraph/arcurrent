@@ -97,6 +97,15 @@ export const FAQ: FaqItem[] = [
     ],
   },
   {
+    id: "double-payment",
+    q: "What stops the same invoice being paid twice after an agent restarts?",
+    a: [
+      "Before paying, the agent flips the obligation from pending to scheduled with a conditional database update, matched only if it is still pending. A restarted agent only ever re-evaluates obligations still marked pending, so anything already claimed has fallen out of that set, and if two evaluation passes race, the database lets only one of them win the claim.",
+      "Once Circle has accepted the transaction, the code stops treating it as retryable: it only releases a claim back to pending if Circle never accepted the transaction at all, meaning nothing was ever submitted on-chain. A crash after that point cannot be mistaken for a failure and resubmitted. Each payment also carries the obligation's own id as its reference, hashed into the on-chain mandate too, so a payment always traces back to exactly one obligation.",
+      "The one honest gap: there is no automatic timeout that un-sticks an obligation if the process dies in the narrow window between claiming it and calling Circle. That needs a manual reset. It is a deliberate trade: stuck-but-safe over fast-but-double-paid.",
+    ],
+  },
+  {
     id: "can-i-lose-money",
     q: "Can I lose money?",
     a: [
