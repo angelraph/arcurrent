@@ -98,6 +98,15 @@ const DECK_HTML = `
       <span class="figure">0x9acb&hellip;1398</span>
     </div>
   </div>
+
+  <p class="cap" style="margin: 16px 0 0;">AgentVault proof, captured 2026&#8209;09&#8209;28: the payment path this deck actually describes, not the direct-wallet flow above. The vault is the funder of record, not the operator wallet.</p>
+  <div class="ledger">
+    <div class="ledger-row">
+      <span class="step">Vault pay</span>
+      <span class="desc">AgentVault.pay() created and released mandate #6 in one call, $0.05 to the approved payee &middot; funder on the mandate is the vault contract itself, inside its owner-set caps</span>
+      <span class="figure">0x4a46&hellip;0ba75</span>
+    </div>
+  </div>
 </div>
 
 <div class="slide" id="s5">
