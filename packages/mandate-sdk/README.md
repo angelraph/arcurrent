@@ -6,7 +6,13 @@ Anyone can fund a mandate for anyone (or leave it open), a fulfiller posts a has
 
 You do not need to be an "Arc project" to use it: any script or agent can call it as long as the transaction is sent to Arc mainnet (a wallet with a little USDC for gas).
 
-> Status: lives in this monorepo and is not published to npm yet. Until it is, build it from the repo (`npm install && npm run build -w @arcurrent/mandate-sdk`) and depend on the workspace.
+## Install
+
+```bash
+npm install @arcurrent/mandate-sdk viem
+```
+
+`viem` is a peer dependency; this package doesn't pin its own copy so you don't end up with two.
 
 ## Quickstart
 

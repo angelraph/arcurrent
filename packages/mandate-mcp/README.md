@@ -4,7 +4,19 @@ An [MCP](https://modelcontextprotocol.io) server that lets any AI agent use **Ma
 
 MandateEscrow is an open escrow contract ([`0xca90…3371`](https://explorer.arc.io/address/0xca901f58fb82FE5FF459264a419b8cF8c75b3371?tab=contract), source verified): a funder locks USDC for a fulfiller, the fulfiller posts a hash of their proof, the funder releases (atomically, optionally split across addresses), and every outcome updates a reputation ledger per address. This server is the same contract exposed as tools, built on [`@arcurrent/mandate-sdk`](../mandate-sdk).
 
-> Status: lives in this monorepo and is not published to npm yet. Build it with `npm install && npm run build -w @arcurrent/mandate-mcp` and point your client at `packages/mandate-mcp/dist/index.js`.
+## Install
+
+Published to npm, so any MCP client can run it with `npx`, no clone, no build step:
+
+```bash
+npx @arcurrent/mandate-mcp
+```
+
+Claude Code:
+
+```bash
+claude mcp add mandate-escrow -- npx -y @arcurrent/mandate-mcp
+```
 
 ## Tools
 
@@ -29,20 +41,14 @@ Only registered when writes are enabled (they move real funds):
 
 ## Configure it
 
-Read-only needs no configuration at all. Claude Code:
-
-```bash
-claude mcp add mandate-escrow -- node /absolute/path/to/arcurrent/packages/mandate-mcp/dist/index.js
-```
-
-Claude Desktop or any client that takes a JSON config:
+Read-only needs no configuration at all. Claude Desktop or any client that takes a JSON config:
 
 ```json
 {
   "mcpServers": {
     "mandate-escrow": {
-      "command": "node",
-      "args": ["/absolute/path/to/arcurrent/packages/mandate-mcp/dist/index.js"]
+      "command": "npx",
+      "args": ["-y", "@arcurrent/mandate-mcp"]
     }
   }
 }
@@ -54,8 +60,8 @@ To let the agent move funds, add a wallet and turn writes on explicitly:
 {
   "mcpServers": {
     "mandate-escrow": {
-      "command": "node",
-      "args": ["/absolute/path/to/arcurrent/packages/mandate-mcp/dist/index.js"],
+      "command": "npx",
+      "args": ["-y", "@arcurrent/mandate-mcp"],
       "env": {
         "MANDATE_PRIVATE_KEY": "0x...",
         "MANDATE_ENABLE_WRITES": "true",
@@ -66,6 +72,8 @@ To let the agent move funds, add a wallet and turn writes on explicitly:
   }
 }
 ```
+
+Working from a local checkout instead of npm? Swap `"command": "npx", "args": ["-y", "@arcurrent/mandate-mcp"]` for `"command": "node", "args": ["/absolute/path/to/arcurrent/packages/mandate-mcp/dist/index.js"]` in any of the configs above.
 
 | Variable | Default | Meaning |
 |---|---|---|
@@ -94,8 +102,8 @@ owner's rules no matter what the agent says.
 {
   "mcpServers": {
     "mandate-escrow": {
-      "command": "node",
-      "args": ["/absolute/path/to/arcurrent/packages/mandate-mcp/dist/index.js"],
+      "command": "npx",
+      "args": ["-y", "@arcurrent/mandate-mcp"],
       "env": {
         "MANDATE_VAULT_ADDRESS": "0xYourVault",
         "MANDATE_PRIVATE_KEY": "0xOperatorKeyHoldingOnlyGas",

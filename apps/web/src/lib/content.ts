@@ -23,7 +23,7 @@ export const ROADMAP: RoadmapColumn[] = [
       "AgentVault: the treasury behind the agent, with a per-payment cap, a daily cap that refills continuously, a payee allowlist and a pause switch. The agent can never withdraw.",
       "The autonomous agent: decides from the vault's real balance, due dates and a reserve floor, then pays with one atomic transaction, confirmed by a signed webhook.",
       "Self-serve pages: connect a wallet to fund your own mandate, share payment-request links, verify proofs in the browser, and read any mandate or address straight from the chain.",
-      "A typed SDK and an MCP server that let any project or AI agent use MandateEscrow, or pay through a vault, with spend caps and simulate-first errors.",
+      "A typed SDK and an MCP server that let any project or AI agent use MandateEscrow, or pay through a vault, with spend caps and simulate-first errors. Published to npm: one `npm install` or `npx`, no clone required.",
       "Tested the hard way: fuzz tests on the cap maths, mutation checks where the contracts were deliberately broken, and rehearsals against live chains.",
     ],
   },
@@ -32,7 +32,6 @@ export const ROADMAP: RoadmapColumn[] = [
     label: "Building next",
     title: "Make it easy to trust and easy to adopt",
     items: [
-      "Publish the SDK and the MCP server to npm so a project can install them in one command.",
       "An independent security review of MandateEscrow and AgentVault before either holds more than a small balance.",
       "Alerts: tell a funder when a proof arrives, and tell the vault owner when a rule is holding the agent back.",
       "Transaction history on every mandate page, from an indexer instead of one contract read at a time.",
@@ -165,7 +164,7 @@ export const FAQ: FaqItem[] = [
     id: "not-finished",
     q: "What is not finished?",
     a: [
-      "Bills in currencies other than USDC are flagged but not auto-settled, because StableFX access is gated. The cross-chain top-up is disabled on mainnet until a funded source wallet exists. The SDK and MCP server are built and tested but not on npm yet. The roadmap above is the full list.",
+      "Bills in currencies other than USDC are flagged but not auto-settled, because StableFX access is gated. The cross-chain top-up is disabled on mainnet until a funded source wallet exists. The roadmap above is the full list.",
     ],
   },
 ];

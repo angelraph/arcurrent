@@ -202,14 +202,18 @@ directly, with no relationship to this repo required. Live on Arc mainnet at
 MIT-licensed source at
 [`packages/contracts/contracts/MandateEscrow.sol`](packages/contracts/contracts/MandateEscrow.sol).
 
-Two ready-made ways in, both in this repo: [`@arcurrent/mandate-sdk`](packages/mandate-sdk)
-is a typed client (spend caps, exact-amount approvals, every write simulated first so
-failures read as clear errors, receipt polling that works on Arc's RPC), and
-[`@arcurrent/mandate-mcp`](packages/mandate-mcp) is an MCP server that hands the same
-contract to any AI agent as tools, read-only by default with two spend limits when
-writes are on. A real create, prove and release cycle has been run through the MCP
-server end to end against mainnet (`scripts/mandate-mcp-e2e.ts`). They are not
-published to npm yet.
+Two ready-made ways in, both published to npm:
+[`@arcurrent/mandate-sdk`](https://www.npmjs.com/package/@arcurrent/mandate-sdk)
+(`npm install @arcurrent/mandate-sdk`) is a typed client (spend caps, exact-amount
+approvals, every write simulated first so failures read as clear errors, receipt
+polling that works on Arc's RPC), and
+[`@arcurrent/mandate-mcp`](https://www.npmjs.com/package/@arcurrent/mandate-mcp)
+(`npx @arcurrent/mandate-mcp`) is an MCP server that hands the same contract to any AI
+agent as tools, read-only by default with two spend limits when writes are on. A real
+create, prove and release cycle has been run through the MCP server end to end against
+mainnet (`scripts/mandate-mcp-e2e.ts`). Source for both lives in this repo, under
+[`packages/mandate-sdk`](packages/mandate-sdk) and
+[`packages/mandate-mcp`](packages/mandate-mcp).
 
 The raw interface, if you would rather call the contract directly, is four write
 functions and one read:
