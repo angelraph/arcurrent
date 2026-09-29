@@ -7,6 +7,7 @@ import {
 } from "@/lib/data";
 import Link from "next/link";
 import { formatUsdc } from "@/lib/format";
+import { AgentHeartbeat } from "../../agent-heartbeat";
 import { Nav } from "../../nav";
 import { ObligationForm } from "../../obligation-form";
 import { DecisionPill, MandateStatusPill, StatusPill } from "../../status-pill";
@@ -72,6 +73,7 @@ export default async function DashboardPage({
           <span className="eyebrow">Live dashboard</span>
           <h2 className="display text-[clamp(26px,3.4vw,36px)]">Treasury &amp; obligations</h2>
           <p className="text-sm text-foreground/80">Real balances, real obligations, real agent decisions, all on {network.name}.</p>
+          <AgentHeartbeat lastCheckedIn={decisions[0]?.createdAt ?? null} />
         </div>
 
         {/*

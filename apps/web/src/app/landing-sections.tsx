@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { getActiveArcNetwork } from "@arcurrent/shared";
+import { CopyCode } from "./copy-code";
 
 export function SectionHeader({
   id,
@@ -219,6 +221,12 @@ const k = "text-[#f39a36]"; // keywords pick up the Arc warm tone
 const s = "text-[#7cc4ff]"; // strings pick up the Arc blue
 const c = "text-[#8890a0]"; // comments stay quiet
 
+// Real, deployed addresses -- the whole point of this card is that the
+// command actually runs, not that it looks like it would.
+const VAULT_ADDRESS = process.env.NEXT_PUBLIC_VAULT_ADDRESS;
+const ESCROW_ADDRESS = process.env.NEXT_PUBLIC_MANDATE_ESCROW_ADDRESS;
+const RPC_URL = getActiveArcNetwork().rpcUrls.default;
+
 export function BuildOnIt() {
   return (
     <Section id="build">
@@ -288,6 +296,24 @@ export function BuildOnIt() {
               {"\n"}  <span className={s}>&quot;MANDATE_ENABLE_WRITES&quot;</span>: <span className={s}>&quot;true&quot;</span>
               {"\n"}{"}"} {"}"}
             </Code>
+          </div>
+
+          <div className="overflow-hidden rounded-xl border border-white/10 bg-[#101627]">
+            <div className="flex items-center justify-between border-b border-white/10 px-5 py-2.5">
+              <span className="font-mono text-xs text-[#8890a0]">terminal</span>
+              <span className="font-mono text-xs text-[#f39a36]">verify it yourself</span>
+            </div>
+            <CopyCode
+              lines={[
+                "# No wallet, no login. Reads live from Arc mainnet.",
+                `cast call ${VAULT_ADDRESS ?? "<vault>"} "availableNow()(uint256)" \\`,
+                `  --rpc-url ${RPC_URL}`,
+                "",
+                "# Every mandate ever created on the open primitive:",
+                `cast call ${ESCROW_ADDRESS ?? "<escrow>"} "nextMandateId()(uint256)" \\`,
+                `  --rpc-url ${RPC_URL}`,
+              ]}
+            />
           </div>
         </div>
       </div>
