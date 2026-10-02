@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { displayAction } from "@/lib/decision-display";
 import { formatUsdc } from "@/lib/format";
 import { SectionHeader } from "./landing-sections";
 
@@ -34,6 +35,7 @@ const ACTION_TONE: Record<string, string> = {
   request_liquidity: "text-[var(--signal)]",
   insufficient_funds: "text-[#ff8a8a]",
   convert_currency: "text-[var(--signal)]",
+  evaluation_error: "text-[var(--signal)]",
 };
 
 /**
@@ -72,7 +74,7 @@ export function LiveLedger({ data }: { data: LedgerData | null }) {
                     <li key={d.id} className="flex flex-col gap-1">
                       <div className="flex flex-wrap items-baseline gap-x-3">
                         <span className="text-[var(--band-muted)]">{stamp(d.createdAt)}</span>
-                        <span className={`font-semibold uppercase ${ACTION_TONE[d.action] ?? ""}`}>{d.action}</span>
+                        <span className={`font-semibold uppercase ${ACTION_TONE[displayAction(d)] ?? ""}`}>{displayAction(d)}</span>
                         {d.txHash && (
                           <a
                             href={`${data.explorer}/tx/${d.txHash}`}

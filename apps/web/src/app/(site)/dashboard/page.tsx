@@ -6,6 +6,7 @@ import {
   getVaultOverview,
 } from "@/lib/data";
 import Link from "next/link";
+import { collapseRepeatedDecisions } from "@/lib/decision-display";
 import { formatUsdc } from "@/lib/format";
 import { AgentHeartbeat } from "../../agent-heartbeat";
 import { Nav } from "../../nav";
@@ -41,7 +42,7 @@ export default async function DashboardPage({
     await Promise.allSettled([
       getVaultOverview(),
       getObligations(),
-      getRecentDecisions(),
+      getRecentDecisions(60),
       getLatestDecisionByObligation(),
       getMandatesWithReputation(),
     ]);
@@ -141,7 +142,7 @@ export default async function DashboardPage({
                       <div className="mt-2">
                         {latest ? (
                           <div className="flex flex-col gap-1">
-                            <DecisionPill action={latest.action} />
+                            <DecisionPill action={latest.action} reasoning={latest.reasoning} />
                             <span className="text-xs text-muted">{latest.reasoning}</span>
                           </div>
                         ) : (
@@ -189,7 +190,7 @@ export default async function DashboardPage({
                           <td className="max-w-xs px-4 py-3 text-muted" title={latest?.reasoning}>
                             {latest ? (
                               <div className="flex flex-col gap-1">
-                                <DecisionPill action={latest.action} />
+                                <DecisionPill action={latest.action} reasoning={latest.reasoning} />
                                 <span className="truncate text-xs">{latest.reasoning}</span>
                               </div>
                             ) : (
@@ -316,13 +317,19 @@ export default async function DashboardPage({
             </p>
           ) : (
             <ul className="flex flex-col gap-2.5">
-              {decisions.map((d) => (
+              {collapseRepeatedDecisions(decisions).map((d) => (
                 <li key={d.id} className="rounded-xl border border-border bg-surface p-4 text-sm shadow-sm">
                   <div className="flex items-center justify-between gap-3">
-                    <DecisionPill action={d.action} />
+                    <DecisionPill action={d.action} reasoning={d.reasoning} />
                     <span className="text-xs text-muted">{new Date(d.createdAt).toLocaleString()}</span>
                   </div>
                   <p className="mt-2 text-foreground">{d.reasoning}</p>
+                  {d.repeats > 0 && d.since && (
+                    <p className="mt-1 text-xs text-muted">
+                      Same verdict recorded {d.repeats} more time{d.repeats === 1 ? "" : "s"} since{" "}
+                      {new Date(d.since).toLocaleDateString(undefined, { month: "short", day: "numeric" })}.
+                    </p>
+                  )}
                   {d.txHash && /^0x[a-fA-F0-9]+$/.test(d.txHash) ? (
                     <a
                       className="mt-2 block break-all font-mono text-xs text-accent hover:underline"

@@ -1,3 +1,5 @@
+import { displayAction } from "@/lib/decision-display";
+
 const OBLIGATION_STYLES: Record<string, string> = {
   pending: "bg-warning-soft text-warning",
   scheduled: "bg-accent-soft text-accent",
@@ -11,6 +13,7 @@ const DECISION_STYLES: Record<string, string> = {
   convert_currency: "bg-warning-soft text-warning",
   request_liquidity: "bg-warning-soft text-warning",
   insufficient_funds: "bg-danger-soft text-danger",
+  evaluation_error: "bg-warning-soft text-warning",
 };
 
 const MANDATE_STYLES: Record<string, string> = {
@@ -34,8 +37,9 @@ export function StatusPill({ status }: { status: string }) {
   return <Pill label={status} className={OBLIGATION_STYLES[status] ?? "bg-border text-muted"} />;
 }
 
-export function DecisionPill({ action }: { action: string }) {
-  return <Pill label={action} className={DECISION_STYLES[action] ?? "bg-border text-muted"} />;
+export function DecisionPill({ action, reasoning }: { action: string; reasoning?: string }) {
+  const shown = reasoning === undefined ? action : displayAction({ action, reasoning });
+  return <Pill label={shown} className={DECISION_STYLES[shown] ?? "bg-border text-muted"} />;
 }
 
 export function MandateStatusPill({ status }: { status: string }) {

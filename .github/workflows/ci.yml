@@ -1,0 +1,29 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      # Builds the shared packages first (the root `pretest` hook), then runs
+      # every workspace's tests: the SDK, the MCP server, the agent logic, the
+      # web helpers, and the Solidity tests for MandateEscrow and AgentVault.
+      - name: Test
+        run: npm test
+
+      - name: Typecheck the web app
+        run: npx tsc --noEmit -p apps/web

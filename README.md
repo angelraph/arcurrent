@@ -1,5 +1,25 @@
 # Arcurrent
 
+[![CI](https://github.com/angelraph/arcurrent/actions/workflows/ci.yml/badge.svg)](https://github.com/angelraph/arcurrent/actions/workflows/ci.yml)
+[![npm: mandate-sdk](https://img.shields.io/npm/v/@arcurrent/mandate-sdk?label=mandate-sdk)](https://www.npmjs.com/package/@arcurrent/mandate-sdk)
+[![npm: mandate-mcp](https://img.shields.io/npm/v/@arcurrent/mandate-mcp?label=mandate-mcp)](https://www.npmjs.com/package/@arcurrent/mandate-mcp)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+
+**An open settlement primitive on Arc mainnet, and an autonomous treasury agent that already pays real invoices through it, from a vault it can never withdraw from.**
+
+[Live site](https://arcurrent.site) · [Dashboard](https://arcurrent.site/dashboard) · [How it works](https://arcurrent.site/how-it-works) · [Roadmap](https://arcurrent.site/roadmap) · [FAQ](https://arcurrent.site/faq)
+
+| Contract | Arc mainnet address |
+|---|---|
+| MandateEscrow (open escrow and reputation) | [`0xca901f58fb82FE5FF459264a419b8cF8c75b3371`](https://explorer.arc.io/address/0xca901f58fb82FE5FF459264a419b8cF8c75b3371?tab=contract) |
+| AgentVault (owner-set spending limits) | [`0x8B4e7F295Ed70DA321831bA34cd0C84443C427B5`](https://explorer.arc.io/address/0x8B4e7F295Ed70DA321831bA34cd0C84443C427B5?tab=contract) |
+
+Check it yourself, no wallet needed:
+
+```bash
+cast call 0x8B4e7F295Ed70DA321831bA34cd0C84443C427B5 "availableNow()(uint256)" --rpc-url https://rpc.mainnet.arc.io
+```
+
 ```mermaid
 flowchart TD
     U["Dashboard<br/>Add obligation (owner passcode)"] --> DB[("Supabase<br/>obligations table")]

@@ -1,5 +1,6 @@
 import { getActiveArcNetwork } from "@arcurrent/shared";
 import { getMandatesWithReputation, getRecentDecisions } from "@/lib/data";
+import { displayAction } from "@/lib/decision-display";
 import { formatUsdc } from "@/lib/format";
 import { Hero } from "../hero";
 import { ExploreGrid, LiveStrip, type LiveStats } from "../landing-sections";
@@ -33,7 +34,7 @@ async function readLedger(): Promise<LedgerData | null> {
       mandates: [...mandates].sort((a, b) => b.id - a.id).slice(0, 6),
       // The agent re-evaluates on a schedule, so identical verdicts repeat; show each distinct one once.
       decisions: decisions
-        .filter((d, i, all) => all.findIndex((o) => o.obligationId === d.obligationId && o.action === d.action) === i)
+        .filter((d, i, all) => all.findIndex((o) => o.obligationId === d.obligationId && displayAction(o) === displayAction(d)) === i)
         .slice(0, 4),
     };
   } catch {

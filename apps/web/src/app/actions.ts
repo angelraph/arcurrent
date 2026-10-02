@@ -7,6 +7,7 @@ import {
 } from "@arcurrent/shared";
 import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
+import { parseAddress } from "@/lib/address";
 import { getEvaluateConfigFromEnv } from "@/lib/evaluate-config";
 
 export interface CreateObligationState {
@@ -89,16 +90,19 @@ export async function createObligation(
     return { error: `Amount can't exceed ${MAX_PUBLIC_OBLIGATION_USDC} USDC on this public demo instance.` };
   }
   if (!dueDate) return { error: "Due date is required." };
-  if (!/^0x[a-fA-F0-9]{40}$/.test(destinationAddress)) {
-    return { error: "Destination address must be a valid 0x-prefixed EVM address." };
-  }
+  // Normalized to the checksummed form before it is stored: the agent's own
+  // address handling is strict, so a malformed destination that slipped in
+  // here would sit pending and fail on every pass instead of being refused
+  // at the door.
+  const parsed = parseAddress(destinationAddress);
+  if (!parsed.ok) return { error: parsed.error };
 
   const { error } = await supabase.from("obligations").insert({
     vendor_name: vendorName,
     amount,
     currency,
     due_date: dueDate,
-    destination_address: destinationAddress,
+    destination_address: parsed.address,
     status: "pending",
   });
 
