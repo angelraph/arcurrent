@@ -1,4 +1,5 @@
 import type { BridgeChain } from "@circle-fin/app-kit";
+import { checkPayeeAddress } from "./address.js";
 import { decide } from "./decide.js";
 import { gateFromCheck, getVaultClient, payViaVault, type VaultPayment } from "./vault.js";
 import { topUpTreasuryLiquidity } from "./liquidity.js";
@@ -72,6 +73,32 @@ export async function evaluatePendingObligations(config: EvaluateConfig): Promis
 
   for (const dbRow of obligations as ObligationRow[]) {
     const row = toObligation(dbRow);
+
+    // A payee address that can never be valid (a mistyped checksum, a wrong
+    // length) is not a transient failure: retrying the same string every pass
+    // would only add noise to the log forever. Record it once, mark the
+    // obligation failed so the owner can resubmit it with the right address,
+    // and move on. The reasoning keeps the "Evaluation failed" prefix so the
+    // dashboard labels it as an evaluation error, not a money shortfall.
+    const payee = checkPayeeAddress(row.destinationAddress);
+    if (!payee.ok) {
+      const { error: failError } = await supabase.from("obligations").update({ status: "failed" }).eq("id", row.id);
+      if (failError) {
+        console.error(`Could not mark obligation ${row.id} failed:`, failError);
+        continue;
+      }
+      const message = `Evaluation failed (not retried): ${payee.reason}. Marked failed; resubmit it with the correct address.`;
+      await supabase.from("agent_decisions").insert({
+        obligation_id: row.id,
+        action: "insufficient_funds",
+        reasoning: message,
+        signals: { evaluationError: payee.reason, permanent: true },
+        tx_hash: null,
+      } satisfies NewAgentDecisionRow);
+      summary.failed += 1;
+      continue;
+    }
+
     // One obligation's failure (a Circle/RPC/oracle hiccup, a CCTP timeout)
     // must not silently abort evaluation of the rest of this pass -- that
     // could leave later obligations sitting unevaluated for up to 24h

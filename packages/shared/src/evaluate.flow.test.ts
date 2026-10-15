@@ -158,6 +158,21 @@ describe("evaluatePendingObligations through the vault", () => {
     expect(String(state.decisions[0].reasoning)).toContain("Submitted through the vault");
   });
 
+  it("fails an obligation with a mistyped payee address once, instead of retrying it every pass", async () => {
+    // Mixed case that fails EIP-55: the shape of the mistyped payee the agent used to retry forever.
+    state.obligations = [obligation({ destination_address: "0xFde19f3BCd5482544cE672391d839a56dA96bFeE" })];
+    state.pay = vi.fn();
+    const summary = await evaluatePendingObligations(config);
+    expect(summary).toEqual({ evaluated: 0, actions: {}, failed: 1 });
+    expect(state.pay).not.toHaveBeenCalled();
+    expect(state.updates).toEqual([{ patch: { status: "failed" }, id: "ob-1" }]);
+    expect(state.decisions).toHaveLength(1);
+    expect(state.decisions[0]).toMatchObject({ obligation_id: "ob-1", action: "insufficient_funds", tx_hash: null });
+    expect(String(state.decisions[0].reasoning)).toMatch(/^Evaluation failed \(not retried\)/);
+    expect(String(state.decisions[0].reasoning)).toContain("checksum");
+    expect(state.decisions[0].signals).toMatchObject({ permanent: true });
+  });
+
   it("does not consult the vault's pre-flight for obligations that are not payable now", async () => {
     state.obligations = [obligation({ due_date: "2099-01-01" })];
     await evaluatePendingObligations(config);
