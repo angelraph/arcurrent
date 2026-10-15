@@ -1,0 +1,11 @@
+Contact: https://github.com/angelraph/arcurrent/security/advisories/new
+Expires: 2027-10-15T00:00:00.000Z
+Preferred-Languages: en
+Canonical: https://arcurrent.site/.well-known/security.txt
+Policy: https://github.com/angelraph/arcurrent/blob/main/SECURITY.md
+
+# Arcurrent (https://arcurrent.site) is an open escrow primitive and a bounded-spending
+# treasury agent on Arc mainnet. The contracts are source verified on the Arc explorer:
+#   MandateEscrow  0xca901f58fb82FE5FF459264a419b8cF8c75b3371
+#   AgentVault     0x8B4e7F295Ed70DA321831bA34cd0C84443C427B5
+# They are self-reviewed, not professionally audited. Source: https://github.com/angelraph/arcurrent

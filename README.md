@@ -80,6 +80,32 @@ Started as a build for the [Build on Arc](https://arc.io) hackathon; now live on
 
 Live dashboard: **https://arcurrent.site**
 
+## Proof and verification
+
+Everything here is checkable without trusting this repository. The full record,
+including deployment transactions and roles, is in [docs/LAUNCH.md](docs/LAUNCH.md).
+
+| Check | Result |
+|---|---|
+| Network | Arc mainnet, chain 5042 |
+| Contracts | MandateEscrow and AgentVault, both source verified on the explorer |
+| Deployments | MandateEscrow tx [`0x826de7ae…2c2f7`](https://explorer.arc.io/tx/0x826de7ae76f5b801fd31c0c43da38467101aa45a23e748ab12dbd44957a2c2f7), AgentVault tx [`0x6afc9d50…c8ab`](https://explorer.arc.io/tx/0x6afc9d507957bd3ae5c771b110ce2d771a62cc7f9e8aa6443a913c2cf534c8ab) |
+| First vault-funded payment | [`0x4a46a2d1…ba75`](https://explorer.arc.io/tx/0x4a46a2d1d75d7a80479957af389f9c2ca3196fc34bcd632f44c8b85f0d10ba75): $0.05, MandateEscrow mandate #6, the vault is the funder of record |
+| Vault tests | 32 Solidity tests against the real MandateEscrow, including fuzz tests on the cap arithmetic, plus a mutation check (four deliberate breakages, each caught) |
+| Off-chain tests | 52 in the SDK, 32 in the MCP server, 37 in the agent and shared logic, 26 in the web helpers; CI runs them on every push |
+| Static analysis | slither reports only the intended zero-address and timestamp notes |
+| Packages | [`@arcurrent/mandate-sdk`](https://www.npmjs.com/package/@arcurrent/mandate-sdk) and [`@arcurrent/mandate-mcp`](https://www.npmjs.com/package/@arcurrent/mandate-mcp) on npm |
+| Independent callers | **none yet.** MandateEscrow is open to any address; the first outside wallet is the next proof |
+| Independent audit | **none.** Self-reviewed only; see [SECURITY.md](SECURITY.md) and keep balances small |
+
+Read it from your own terminal with no wallet:
+
+```bash
+RPC=https://rpc.mainnet.arc.io
+cast call 0xca901f58fb82FE5FF459264a419b8cF8c75b3371 "nextMandateId()(uint256)" --rpc-url $RPC    # mandates created so far
+cast call 0x8B4e7F295Ed70DA321831bA34cd0C84443C427B5 "availableNow()(uint256)" --rpc-url $RPC    # what the agent could spend right now
+```
+
 ## Stack
 
 | Layer | Choice | Why |
