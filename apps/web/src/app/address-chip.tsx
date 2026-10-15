@@ -37,7 +37,7 @@ export function AddressChip({
   }
 
   return (
-    <span className="inline-flex items-center gap-2 rounded-lg bg-elevated py-1 pl-1 pr-2 text-sm" title={address}>
+    <span className="inline-flex items-center gap-2 whitespace-nowrap rounded-lg bg-elevated py-1 pl-1 pr-2 text-sm" title={address}>
       <span aria-hidden className="h-5 w-5 shrink-0 rounded-full" style={{ background: avatarGradient(address) }} />
       {label && <span className="text-muted">{label}</span>}
       <span className="font-mono text-[13px]">

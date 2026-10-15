@@ -101,19 +101,33 @@ function Digit({ digit, on, delay }: { digit: number; on: boolean; delay: number
  * A figure that rolls into place digit by digit, like an odometer, when it
  * scrolls into view. Pass the already-formatted string ("$1,240.50", "2.5M+").
  */
-export function RollingNumber({ value, className = "" }: { value: string; className?: string }) {
+export function RollingNumber({
+  value,
+  className = "",
+  fadeDecimals = false,
+}: {
+  value: string;
+  className?: string;
+  /** Grey out everything after the decimal point, the way treasury apps de-emphasise cents. */
+  fadeDecimals?: boolean;
+}) {
   const [ref, seen] = useInView<HTMLSpanElement>(0.5);
+  const dot = value.indexOf(".");
   return (
     <span ref={ref} role="img" aria-label={value} className={`inline-flex items-baseline ${className}`}>
-      {value.split("").map((ch, i) =>
-        /\d/.test(ch) ? (
-          <Digit key={i} digit={Number(ch)} on={seen} delay={i * 80} />
+      {value.split("").map((ch, i) => {
+        const faded = fadeDecimals && dot !== -1 && i >= dot;
+        const node = /\d/.test(ch) ? (
+          <Digit digit={Number(ch)} on={seen} delay={i * 80} />
         ) : (
-          <span key={i} aria-hidden>
-            {ch}
+          <span aria-hidden>{ch}</span>
+        );
+        return (
+          <span key={i} className={faded ? "opacity-40" : undefined}>
+            {node}
           </span>
-        )
-      )}
+        );
+      })}
     </span>
   );
 }
