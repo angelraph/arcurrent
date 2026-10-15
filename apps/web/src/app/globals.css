@@ -62,6 +62,8 @@
   --color-plum-foreground: var(--plum-foreground);
   --color-band: var(--band);
   --color-band-foreground: var(--band-foreground);
+  --color-band-muted: var(--band-muted);
+  --color-band-rule: var(--band-rule);
   --color-signal: var(--signal);
   --color-rule: var(--rule);
   --font-sans: var(--font-inter);

@@ -1,15 +1,26 @@
 name: CI
 
+# No secrets are needed or exposed: every test runs against fakes or a local EVM.
+# Fork and live-chain checks (scripts/vault-rehearsal.ts, scripts/vault-mcp-e2e.ts)
+# need real keys and an RPC, so they are run by hand before a release.
+
+permissions: {}
+
 on:
   push:
     branches: [main]
   pull_request:
+  workflow_dispatch:
 
 jobs:
   test:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
 
       - uses: actions/setup-node@v4
         with:
@@ -27,3 +38,6 @@ jobs:
 
       - name: Typecheck the web app
         run: npx tsc --noEmit -p apps/web
+
+      - name: Lint the web app
+        run: npm run lint -w web

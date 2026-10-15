@@ -29,8 +29,9 @@ wallet, which can by design do anything the vault permits.
 
 ## What to know first
 
-- The contracts are **self-reviewed, not professionally audited**. The review, test and
-  mutation results are in [docs/STACK.md](docs/STACK.md).
+- The contracts are **self-reviewed, not professionally audited**. The findings, fixes and open
+  items are in [docs/AUDIT.md](docs/AUDIT.md), and the contract write-ups in
+  [docs/STACK.md](docs/STACK.md).
 - The vault holds a deliberately small balance, and its limits are public on the
   [dashboard](https://arcurrent.site/dashboard).
 - The agent's signing wallet holds only gas. No private key lives in this repository.
