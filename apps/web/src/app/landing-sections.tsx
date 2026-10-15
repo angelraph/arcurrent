@@ -30,39 +30,6 @@ export function Section({ children, id, tinted }: { children: React.ReactNode; i
   );
 }
 
-// ---------------------------------------------------------------- live strip
-
-export interface LiveStats {
-  mandates: number;
-  released: number;
-  volumeUsdc: string;
-}
-
-/** Numbers read from the chain at request time, so the strip can only ever tell the truth. */
-export function LiveStrip({ stats }: { stats: LiveStats | null }) {
-  const cells = [
-    { label: "Mandates on-chain", value: stats ? String(stats.mandates) : "…" },
-    { label: "Released", value: stats ? String(stats.released) : "…" },
-    { label: "USDC settled", value: stats ? `$${stats.volumeUsdc}` : "…" },
-    { label: "Contracts verified", value: "2" },
-  ];
-  return (
-    <div className="border-b border-border bg-surface/60">
-      <dl className="mx-auto grid w-full max-w-[1200px] grid-cols-2 px-6 sm:grid-cols-4">
-        {cells.map((c, i) => (
-          <div
-            key={c.label}
-            className={`flex flex-col gap-1 py-5 ${i > 0 ? "sm:border-l sm:border-border sm:pl-6" : ""} ${i % 2 === 1 ? "border-l border-border pl-6 sm:pl-6" : ""}`}
-          >
-            <dt className="label-mono">{c.label}</dt>
-            <dd className="font-display text-2xl font-medium tracking-[-0.02em]">{c.value}</dd>
-          </div>
-        ))}
-      </dl>
-    </div>
-  );
-}
-
 // -------------------------------------------------------------- how it works
 
 const STEPS = [

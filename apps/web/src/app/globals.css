@@ -339,3 +339,99 @@ button:focus-visible {
 @media (prefers-reduced-motion: reduce) {
   .live-dot, .cursor, .rail-flow { animation: none; }
 }
+
+/* ---- Landing page ------------------------------------------------------ */
+
+/* The big hero headline. */
+.display-xl {
+  font-family: var(--font-inter), system-ui, sans-serif;
+  font-weight: 600;
+  letter-spacing: -0.04em;
+  line-height: 1.02;
+  font-size: clamp(40px, 6.4vw, 80px);
+}
+
+/* A soft, drifting colour field behind a hero or dark panel. */
+.hero-orb {
+  position: absolute;
+  border-radius: 9999px;
+  pointer-events: none;
+  background: radial-gradient(
+    circle at 50% 50%,
+    color-mix(in srgb, var(--accent) 55%, transparent),
+    transparent 68%
+  );
+  filter: blur(28px);
+  animation: orb-drift 14s ease-in-out infinite alternate;
+}
+
+/* Small rounded status pill with a live dot. */
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  border-radius: 9999px;
+  font-size: 12px;
+  font-weight: 500;
+  background: color-mix(in srgb, var(--surface) 80%, transparent);
+  box-shadow: 0 0 0 1px var(--ring);
+  backdrop-filter: blur(6px);
+}
+
+/* Pill-shaped primary action, for the landing page's headline call to action. */
+.btn-pill {
+  height: 48px;
+  padding: 0 24px;
+  border-radius: 9999px;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.float-slow {
+  animation: float-y 7s ease-in-out infinite;
+}
+.float-slower {
+  animation: float-y 9s ease-in-out -3s infinite;
+}
+
+/* Lifecycle explainer: the active tab's countdown and the swapping panel. */
+.lifecycle-progress {
+  animation: lifecycle-fill 5.2s linear forwards;
+}
+.panel-swap {
+  animation: panel-in 500ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+/* Marquee of the proof facts that sits under the hero. */
+.marquee-track {
+  display: flex;
+  width: max-content;
+  animation: marquee 38s linear infinite;
+}
+.marquee:hover .marquee-track {
+  animation-play-state: paused;
+}
+
+@keyframes orb-drift {
+  from { transform: translate3d(-14px, -10px, 0) scale(1); }
+  to { transform: translate3d(18px, 14px, 0) scale(1.12); }
+}
+@keyframes float-y {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}
+@keyframes lifecycle-fill {
+  from { width: 0; }
+  to { width: 100%; }
+}
+@keyframes panel-in {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes marquee {
+  to { transform: translateX(-50%); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .hero-orb, .float-slow, .float-slower, .lifecycle-progress, .panel-swap, .marquee-track { animation: none; }
+}
