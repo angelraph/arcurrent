@@ -1,35 +1,44 @@
 @import "tailwindcss";
 
+/*
+  Design system: a calm, data-first treasury UI.
+
+  Surfaces, ring borders and card geometry follow the conventions of mature
+  DeFi and treasury dashboards (near-black warm neutrals, 1px ring borders
+  instead of heavy outlines, 10px cards, 8px controls, 14px base text, tabular
+  numerals). The Arc blue stays the single accent; warm tones are reserved for
+  small signals, not page washes.
+*/
+
 :root {
-  /* Arc palette: unchanged. */
-  --background: #f7f9fc;
+  /* Light: clean neutrals, white cards on a soft gray canvas. */
+  --background: #f5f6f8;
   --surface: #ffffff;
-  --foreground: #0f1629;
-  --muted: #5b6472;
-  --border: #e2e6ee;
+  --foreground: #101114;
+  --muted: #6b7078;
+  --border: #e3e5ea;
   --accent: #2775ca;
   --accent-foreground: #ffffff;
-  --accent-soft: #eaf2fb;
+  --accent-soft: #e9f1fb;
   --success: #0f9d58;
-  --success-soft: #e6f6ec;
-  --warning: #b4790a;
-  --warning-soft: #fbf0dc;
-  --danger: #d0362f;
-  --danger-soft: #fbe9e8;
+  --success-soft: #e4f5eb;
+  --warning: #a86d08;
+  --warning-soft: #fbf0db;
+  --danger: #cc332c;
+  --danger-soft: #fbe8e6;
 
-  /* Structural tokens for the ledger-style layout. All derived from the Arc
-     palette: the blue for rails, the sunset gradient's warm tones for labels
-     and the dark contrast card, a deep navy for the closing band. */
-  --panel: #eaf2fb; /* contained narrative cards */
-  --plum: #3a1230; /* dark contrast card, from the gradient's deep end */
-  --plum-foreground: #f6e9ef;
-  --band: #070b14; /* full-width closing band */
-  --band-foreground: #e8ecf4;
-  --band-muted: rgba(232, 236, 244, 0.62);
-  --band-rule: rgba(232, 236, 244, 0.18);
-  --signal: #b25b12; /* technical eyebrow labels */
-  --grid: rgba(15, 22, 41, 0.06); /* graph-paper lines */
-  --rule: #d4dae6; /* hairlines that need to read on paper */
+  --elevated: #eef0f3; /* controls and secondary buttons */
+  --panel: #eef2f8; /* contained narrative cards */
+  --plum: #14181f; /* the one dark contrast card */
+  --plum-foreground: #eceff4;
+  --band: #0d0f13; /* full-width closing band */
+  --band-foreground: #e9ebef;
+  --band-muted: rgba(233, 235, 239, 0.62);
+  --band-rule: rgba(233, 235, 239, 0.14);
+  --signal: #2775ca; /* small labels use the accent, not a second hue */
+  --grid: rgba(16, 17, 20, 0.04);
+  --rule: #d9dce2;
+  --ring: rgba(16, 17, 20, 0.07);
 }
 
 @theme inline {
@@ -47,6 +56,7 @@
   --color-warning-soft: var(--warning-soft);
   --color-danger: var(--danger);
   --color-danger-soft: var(--danger-soft);
+  --color-elevated: var(--elevated);
   --color-panel: var(--panel);
   --color-plum: var(--plum);
   --color-plum-foreground: var(--plum-foreground);
@@ -55,41 +65,45 @@
   --color-signal: var(--signal);
   --color-rule: var(--rule);
   --font-sans: var(--font-inter);
-  --font-display: var(--font-manrope);
+  --font-display: var(--font-inter);
   --font-mono: var(--font-plex-mono);
 
-  /* Sharper geometry everywhere the existing screens already use rounded-*:
-     8px cards, 4px controls, no drop shadows, hairlines do the structuring. */
-  --radius-lg: 4px;
-  --radius-xl: 8px;
-  --radius-2xl: 8px;
+  /* Cards are 10px, controls 8px, with a soft ring instead of a drop shadow. */
+  --radius-lg: 8px;
+  --radius-xl: 10px;
+  --radius-2xl: 12px;
   --shadow-sm: 0 0 #0000;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0b0f1a;
-    --surface: #121826;
-    --foreground: #e8ecf4;
-    --muted: #8890a0;
-    --border: #232b3d;
+    --background: #100f0f;
+    --surface: #1a1919;
+    --foreground: #f2f1f1;
+    --muted: #8f8e8e;
+    --border: #2a2929;
     --accent: #4b9fe6;
-    --accent-foreground: #071019;
-    --accent-soft: #16233a;
+    --accent-foreground: #07121c;
+    --accent-soft: #14253a;
     --success: #3ecf7e;
-    --success-soft: #12261c;
+    --success-soft: #11261b;
     --warning: #e0ac4c;
-    --warning-soft: #2b2313;
+    --warning-soft: #2a2212;
     --danger: #f2665f;
     --danger-soft: #2c1717;
 
-    --panel: #131d30;
-    --plum: #3a1230;
-    --plum-foreground: #f6e9ef;
-    --band: #070b14;
-    --signal: #f39a36;
-    --grid: rgba(232, 236, 244, 0.055);
-    --rule: #2a3450;
+    --elevated: #1e1e20;
+    --panel: #1a1c20;
+    --plum: #1e1e20;
+    --plum-foreground: #f2f1f1;
+    --band: #0a0909;
+    --band-foreground: #f2f1f1;
+    --band-muted: rgba(242, 241, 241, 0.6);
+    --band-rule: rgba(242, 241, 241, 0.12);
+    --signal: #4b9fe6;
+    --grid: rgba(255, 255, 255, 0.035);
+    --rule: #333232;
+    --ring: rgba(255, 255, 255, 0.08);
   }
 }
 
@@ -108,87 +122,86 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
-  font-feature-settings: "cv10" 1, "ss07" 1;
+  font-size: 14px;
+  font-feature-settings: "cv11" 1, "ss03" 1;
+  /* Figures line up in columns everywhere without opting in per element. */
+  font-variant-numeric: tabular-nums;
   /* Arrows like the external-link glyph must stay plain text, not emoji. */
   font-variant-emoji: text;
+  -webkit-font-smoothing: antialiased;
   position: relative;
 }
 
-/* Warm gradient glow layered behind the top of every page, added on top of
-   the existing --background color, not replacing it. Fixed height and a
-   transparent final stop so it reads as a hero-area accent and fades into
-   the normal background before reaching page content further down, keeping
-   card/surface contrast untouched everywhere it matters. Absolute, not
-   fixed: it belongs to the top of the page and scrolls away with it, so it
-   never sits behind body text further down and hurts its contrast. */
+/* A single, very quiet accent glow at the top of the page. It orients the eye
+   without tinting the content below it. */
 body::before {
   content: "";
   position: absolute;
   top: 0;
   left: 0;
   right: 0;
-  height: 520px;
+  height: 420px;
   z-index: -1;
   pointer-events: none;
-  background: linear-gradient(
-    to bottom,
-    #6a1841 0%,
-    #a62f4b 30%,
-    #d85a35 60%,
-    #f39a36 82%,
-    transparent 100%
+  background: radial-gradient(
+    ellipse 60% 100% at 50% 0%,
+    color-mix(in srgb, var(--accent) 14%, transparent),
+    transparent 70%
   );
-  opacity: 0.55;
 }
 
 /* ---- Shared building blocks ------------------------------------------- */
 
-/* Monospace "ledger metadata" label: small, uppercase, quiet. */
+/* Small, quiet field label. Sentence case, no monospace. */
 .label-mono {
-  font-family: var(--font-plex-mono), ui-monospace, monospace;
   font-size: 12px;
   font-weight: 500;
-  line-height: 1.2;
-  letter-spacing: 0.07em;
-  text-transform: uppercase;
+  line-height: 1.3;
+  letter-spacing: 0;
   color: var(--muted);
 }
 
-/* The warm technical eyebrow that sits above a section heading. */
+/* The small accent label that sits above a section heading. */
 .eyebrow {
-  font-family: var(--font-plex-mono), ui-monospace, monospace;
   font-size: 12px;
-  font-weight: 500;
-  line-height: 1.2;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--signal);
+  font-weight: 600;
+  line-height: 1.3;
+  letter-spacing: 0.01em;
+  color: var(--accent);
 }
 
-/* Large, quiet, tightly tracked display type. */
+/* Headings: Inter, medium weight, a hair of negative tracking. */
 .display {
-  font-family: var(--font-manrope), var(--font-inter), system-ui, sans-serif;
-  font-weight: 500;
-  letter-spacing: -0.035em;
-  line-height: 1.04;
+  font-family: var(--font-inter), system-ui, sans-serif;
+  font-weight: 600;
+  letter-spacing: -0.025em;
+  line-height: 1.1;
 }
 
 .section-title {
-  font-family: var(--font-manrope), var(--font-inter), system-ui, sans-serif;
-  font-weight: 500;
-  letter-spacing: -0.03em;
-  line-height: 1.08;
-  font-size: clamp(30px, 4.2vw, 48px);
+  font-family: var(--font-inter), system-ui, sans-serif;
+  font-weight: 600;
+  letter-spacing: -0.025em;
+  line-height: 1.12;
+  font-size: clamp(26px, 3.2vw, 38px);
 }
 
-/* Faint graph paper, fading out toward the bottom of its container. */
+/* A large figure in a metric tile. */
+.metric {
+  font-size: clamp(22px, 2.4vw, 28px);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+}
+
+/* Faint graph paper, used only where a hero needs a little structure. */
 .grid-paper {
   background-image:
     linear-gradient(var(--grid) 1px, transparent 1px),
     linear-gradient(90deg, var(--grid) 1px, transparent 1px);
-  background-size: 32px 32px;
-  -webkit-mask-image: linear-gradient(to bottom, #000 55%, transparent 100%);
-  mask-image: linear-gradient(to bottom, #000 55%, transparent 100%);
+  background-size: 40px 40px;
+  -webkit-mask-image: linear-gradient(to bottom, #000 40%, transparent 100%);
+  mask-image: linear-gradient(to bottom, #000 40%, transparent 100%);
 }
 
 .btn {
@@ -196,13 +209,14 @@ body::before {
   align-items: center;
   justify-content: center;
   gap: 8px;
-  padding: 10px 16px;
-  border-radius: 4px;
+  height: 40px;
+  padding: 0 18px;
+  border-radius: 8px;
   border: 1px solid transparent;
   font-size: 14px;
-  font-weight: 600;
-  line-height: 1.4;
-  transition: opacity 0.15s ease, background-color 0.15s ease, border-color 0.15s ease;
+  font-weight: 500;
+  line-height: 1;
+  transition: background-color 0.15s ease, border-color 0.15s ease, opacity 0.15s ease;
 }
 
 .btn-primary {
@@ -212,25 +226,63 @@ body::before {
 }
 
 .btn-primary:hover {
-  opacity: 0.9;
+  opacity: 0.92;
 }
 
+/* Secondary: a filled, borderless control, like the dark-mode button style of
+   mature treasury apps. */
 .btn-outline {
-  background: transparent;
-  border-color: color-mix(in srgb, var(--foreground) 32%, transparent);
+  background: var(--elevated);
+  border-color: transparent;
   color: var(--foreground);
 }
 
 .btn-outline:hover {
-  background: var(--surface);
-  border-color: var(--foreground);
+  background: color-mix(in srgb, var(--elevated) 82%, var(--foreground));
 }
 
 .btn:focus-visible,
 a:focus-visible,
-summary:focus-visible {
+summary:focus-visible,
+button:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
+}
+
+/* Cards: a 1px ring plus a very soft lift, never a heavy outline. */
+.card {
+  background: var(--surface);
+  border-radius: 10px;
+  box-shadow: 0 0 0 1px var(--ring), 0 2px 4px rgba(0, 0, 0, 0.06);
+}
+
+/* Data tables. */
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+}
+.data-table thead th {
+  padding: 12px 20px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--muted);
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+.data-table tbody td {
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border);
+  vertical-align: top;
+}
+.data-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+.data-table tbody tr {
+  transition: background-color 0.12s ease;
+}
+.data-table tbody tr:hover {
+  background: color-mix(in srgb, var(--foreground) 3%, transparent);
 }
 
 /* FAQ accordion: native <details>, no script, keyboard and screen-reader
@@ -258,7 +310,7 @@ summary:focus-visible {
   }
 }
 
-/* Terminal touches on the live ledger and the flowing rail. */
+/* Live indicators and the flowing rail. */
 .live-dot {
   animation: live-pulse 1.8s ease-in-out infinite;
 }
@@ -267,7 +319,7 @@ summary:focus-visible {
   width: 0.55em;
   height: 1.05em;
   vertical-align: text-bottom;
-  background: var(--signal);
+  background: var(--accent);
   animation: cursor-blink 1.1s steps(1) infinite;
 }
 .rail-flow {
@@ -275,8 +327,8 @@ summary:focus-visible {
   animation: rail-flow 1.4s linear infinite;
 }
 @keyframes live-pulse {
-  0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(126, 224, 161, 0.55); }
-  50% { opacity: 0.6; box-shadow: 0 0 0 5px rgba(126, 224, 161, 0); }
+  0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(62, 207, 126, 0.5); }
+  50% { opacity: 0.7; box-shadow: 0 0 0 5px rgba(62, 207, 126, 0); }
 }
 @keyframes cursor-blink {
   50% { opacity: 0; }

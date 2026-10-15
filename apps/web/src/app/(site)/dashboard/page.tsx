@@ -69,11 +69,14 @@ export default async function DashboardPage({
     <div className="flex flex-1 flex-col">
       <Nav />
 
-      <div className="mx-auto flex w-full max-w-4xl flex-col gap-10 px-6 py-12">
-        <div className="flex flex-col gap-1">
-          <span className="eyebrow">Live dashboard</span>
-          <h2 className="display text-[clamp(26px,3.4vw,36px)]">Treasury &amp; obligations</h2>
-          <p className="text-sm text-foreground/80">Real balances, real obligations, real agent decisions, all on {network.name}.</p>
+      <div className="mx-auto flex w-full max-w-6xl flex-col gap-8 px-6 py-10">
+        <div className="flex flex-wrap items-end justify-between gap-4">
+          <div className="flex flex-col gap-1">
+            <h1 className="display text-[clamp(26px,3vw,32px)]">Dashboard</h1>
+            <p className="text-sm text-muted">
+              Live balances, obligations and agent decisions on {network.name}.
+            </p>
+          </div>
           <AgentHeartbeat lastCheckedIn={decisions[0]?.createdAt ?? null} />
         </div>
 
@@ -93,7 +96,7 @@ export default async function DashboardPage({
 
         <section className="flex flex-col gap-3">
           <div className="flex flex-col gap-1">
-            <h2 className="label-mono">Add obligation</h2>
+            <h2 className="text-lg font-semibold tracking-[-0.01em]">Add obligation</h2>
             <p className="text-xs text-muted">
               This is this project&apos;s own agent demo · it spends Arcurrent&apos;s treasury above, not
               yours. To try MandateEscrow with your own funds instead, use the panel near the top of this
@@ -104,7 +107,7 @@ export default async function DashboardPage({
         </section>
 
         <section className="flex flex-col gap-3">
-          <h2 className="label-mono">Obligations</h2>
+          <h2 className="text-lg font-semibold tracking-[-0.01em]">Obligations</h2>
           {obligationsUnavailable ? (
             <p className="rounded-xl border border-dashed border-warning p-6 text-center text-sm text-warning">
               Obligations temporarily unavailable. Try refreshing.
@@ -122,7 +125,7 @@ export default async function DashboardPage({
                 {obligations.map((o) => {
                   const latest = latestDecisionByObligation.get(o.id);
                   return (
-                    <div key={o.id} className="rounded-xl border border-border bg-surface p-4 text-sm shadow-sm">
+                    <div key={o.id} className="card p-4 text-sm">
                       <div className="flex items-center justify-between gap-2">
                         <span className="font-medium">{o.vendorName}</span>
                         <StatusPill status={o.status} />
@@ -154,10 +157,10 @@ export default async function DashboardPage({
                 })}
               </div>
 
-              <div className="hidden overflow-x-auto rounded-xl border border-border bg-surface shadow-sm sm:block">
-                <table className="w-full text-left text-sm">
+              <div className="card hidden overflow-x-auto sm:block">
+                <table className="data-table text-sm">
                   <thead>
-                    <tr className="border-b border-border text-xs uppercase tracking-wide text-muted">
+                    <tr className="text-xs">
                       <th className="px-4 py-3 font-medium">Vendor</th>
                       <th className="px-4 py-3 font-medium">Amount</th>
                       <th className="px-4 py-3 font-medium">Due</th>
@@ -209,7 +212,7 @@ export default async function DashboardPage({
 
         <section className="flex flex-col gap-3">
           <div className="flex flex-col gap-1">
-            <h2 className="label-mono">Mandates</h2>
+            <h2 className="text-lg font-semibold tracking-[-0.01em]">Mandates</h2>
             <p className="text-xs text-muted">
               The general settlement primitive · not a side demo. The treasury agent itself is a live funder
               here: every obligation paid above is created and released as its own mandate on{" "}
@@ -237,7 +240,7 @@ export default async function DashboardPage({
             <>
               <div className="flex flex-col gap-3 sm:hidden">
                 {mandates.map((m) => (
-                  <div key={m.id} className="rounded-xl border border-border bg-surface p-4 text-sm shadow-sm">
+                  <div key={m.id} className="card p-4 text-sm">
                     <div className="flex items-center justify-between gap-2">
                       <Link href={`/mandate/${m.id}`} className="font-mono text-accent hover:underline">#{m.id}</Link>
                       <MandateStatusPill status={m.status} />
@@ -256,10 +259,10 @@ export default async function DashboardPage({
                 ))}
               </div>
 
-              <div className="hidden overflow-x-auto rounded-xl border border-border bg-surface shadow-sm sm:block">
-                <table className="w-full text-left text-sm">
+              <div className="card hidden overflow-x-auto sm:block">
+                <table className="data-table text-sm">
                   <thead>
-                    <tr className="border-b border-border text-xs uppercase tracking-wide text-muted">
+                    <tr className="text-xs">
                       <th className="px-4 py-3 font-medium">#</th>
                       <th className="px-4 py-3 font-medium">Funder</th>
                       <th className="px-4 py-3 font-medium">Fulfiller</th>
@@ -306,7 +309,7 @@ export default async function DashboardPage({
         </section>
 
         <section className="flex flex-col gap-3 pb-8">
-          <h2 className="label-mono">Agent decision log</h2>
+          <h2 className="text-lg font-semibold tracking-[-0.01em]">Agent decision log</h2>
           {decisionsUnavailable ? (
             <p className="rounded-xl border border-dashed border-warning p-6 text-center text-sm text-warning">
               Decision log temporarily unavailable. Try refreshing.
@@ -318,7 +321,7 @@ export default async function DashboardPage({
           ) : (
             <ul className="flex flex-col gap-2.5">
               {collapseRepeatedDecisions(decisions).map((d) => (
-                <li key={d.id} className="rounded-xl border border-border bg-surface p-4 text-sm shadow-sm">
+                <li key={d.id} className="card p-4 text-sm">
                   <div className="flex items-center justify-between gap-3">
                     <DecisionPill action={d.action} reasoning={d.reasoning} />
                     <span className="text-xs text-muted">{new Date(d.createdAt).toLocaleString()}</span>

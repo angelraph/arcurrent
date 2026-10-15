@@ -1,54 +1,39 @@
 import Link from "next/link";
 import { getActiveArcNetwork } from "@arcurrent/shared";
-
-const linkClass = "text-sm font-medium text-muted transition hover:text-foreground";
+import { NavLinks } from "./nav-links";
 
 export function Nav() {
   const network = getActiveArcNetwork();
   return (
     <>
-      <div
-        className="px-4 py-2 text-center text-[13px] font-medium leading-snug text-white"
-        style={{ background: "linear-gradient(90deg, #6a1841 0%, #a62f4b 40%, #d85a35 78%, #f39a36 100%)" }}
-      >
-        AgentVault is live on Arc mainnet: the agent pays inside limits you set on-chain.{" "}
-        <Link href="/how-it-works#bounded" className="underline decoration-white/50 underline-offset-2 hover:decoration-white">
-          See how it is bounded
-        </Link>
+      <div className="border-b border-border bg-surface/60 px-4 py-2 text-center text-xs text-muted">
+        <span className="inline-flex flex-wrap items-center justify-center gap-x-2">
+          <span aria-hidden className="live-dot h-1.5 w-1.5 rounded-full bg-success" />
+          AgentVault is live on {network.name}: the agent pays only inside limits set on-chain.
+          <Link href="/how-it-works#bounded" className="font-medium text-foreground underline underline-offset-2">
+            How it is bounded
+          </Link>
+        </span>
       </div>
-      <header className="border-b border-border bg-surface/90 px-6 backdrop-blur">
-        <div className="mx-auto flex w-full max-w-[1200px] flex-wrap items-center justify-between gap-x-6 gap-y-2 py-3.5">
-          <div className="flex flex-wrap items-center gap-x-8 gap-y-2">
-            <Link href="/" className="flex items-center gap-2">
+      <header className="border-b border-border px-6">
+        <div className="mx-auto flex h-[72px] w-full max-w-[1200px] items-center justify-between gap-6">
+          <div className="flex items-center gap-8">
+            <Link href="/" className="flex items-center gap-2.5">
               <img src="/arcurrent-icon.png" alt="" className="h-7 w-7 object-contain" />
-              <span className="font-display text-xl font-semibold tracking-[-0.03em]">Arcurrent</span>
+              <span className="text-lg font-semibold tracking-[-0.02em]">Arcurrent</span>
             </Link>
-            <nav aria-label="Main" className="flex flex-wrap items-center gap-x-5 gap-y-1">
-              <Link href="/dashboard" className={linkClass}>
-                Dashboard
-              </Link>
-              <Link href="/how-it-works" className={linkClass}>
-                How it works
-              </Link>
-              <Link href="/roadmap" className={linkClass}>
-                Roadmap
-              </Link>
-              <Link href="/faq" className={linkClass}>
-                FAQ
-              </Link>
-              <Link href="/deck" className={linkClass}>
-                Pitch deck
-              </Link>
-              {network.faucet && (
-                <Link href="/faucet" className={linkClass}>
-                  Testnet faucet
-                </Link>
-              )}
-            </nav>
+            <div className="hidden md:block">
+              <NavLinks faucet={Boolean(network.faucet)} />
+            </div>
           </div>
-          <span className="label-mono rounded-[4px] border border-border px-2 py-1 normal-case tracking-normal">
-            {network.name} · chain {network.chainId}
+          <span className="inline-flex items-center gap-2 rounded-lg bg-elevated px-3 py-2 text-xs font-medium">
+            <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-success" />
+            {network.name}
+            <span className="hidden text-muted sm:inline">· chain {network.chainId}</span>
           </span>
+        </div>
+        <div className="mx-auto w-full max-w-[1200px] overflow-x-auto md:hidden [&_a]:!h-11 [&_a]:whitespace-nowrap">
+          <NavLinks faucet={Boolean(network.faucet)} />
         </div>
       </header>
     </>

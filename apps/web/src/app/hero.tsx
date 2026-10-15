@@ -14,7 +14,7 @@ export function Hero() {
       <div className="relative mx-auto grid w-full max-w-[1200px] items-center gap-12 px-6 py-16 lg:grid-cols-[1.02fr_1fr] lg:gap-10 lg:py-24">
         <div className="flex flex-col gap-7">
           <p className="eyebrow">Live on Arc mainnet · source verified</p>
-          <h1 className="display text-[clamp(34px,4.3vw,56px)]">
+          <h1 className="display text-[clamp(30px,3.6vw,46px)]">
             An open settlement primitive, and the autonomous agent that&apos;s already using it.
           </h1>
           <p className="max-w-xl text-base leading-relaxed text-foreground/85 sm:text-lg">

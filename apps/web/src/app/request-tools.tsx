@@ -43,7 +43,7 @@ export function RequestGenerator() {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-4 rounded-xl border border-border bg-surface p-5 shadow-sm">
+    <form onSubmit={handleSubmit} className="card flex flex-col gap-4 p-6">
       <label className="text-sm font-medium">
         Your address (where the payment is sent when the payer releases it)
         <input value={to} onChange={(e) => setTo(e.target.value)} placeholder="0x…" required className={`${inputClass} font-mono`} />
@@ -108,7 +108,7 @@ export function FundRequest({ request }: { request: PaymentRequest }) {
 
   return (
     <div className="flex flex-col gap-4">
-      <section className="flex flex-col gap-2 rounded-xl border-2 border-accent bg-surface p-5 shadow-sm">
+      <section className="card flex flex-col gap-2 border-l-[3px] border-l-accent p-6">
         <h2 className="eyebrow">Payment request</h2>
         <p className="display text-[clamp(26px,3.4vw,36px)]">
           <span className="font-mono">${request.amount}</span> USDC
@@ -125,8 +125,8 @@ export function FundRequest({ request }: { request: PaymentRequest }) {
         </p>
       </section>
 
-      <section className="flex flex-col gap-3 rounded-xl border border-border bg-surface p-5 shadow-sm">
-        <h2 className="label-mono">Fund it from your wallet</h2>
+      <section className="card flex flex-col gap-3 p-6">
+        <h2 className="text-lg font-semibold tracking-[-0.01em]">Fund it from your wallet</h2>
         <ConnectGate>
           <div className="flex flex-col gap-3">
             <AccountBar />
@@ -139,7 +139,7 @@ export function FundRequest({ request }: { request: PaymentRequest }) {
       </section>
 
       {createdId !== null && (
-        <section className="flex flex-col gap-2 rounded-xl border border-success bg-surface p-5 shadow-sm">
+        <section className="card flex flex-col gap-2 border-l-[3px] border-l-success p-6">
           <h2 className="text-sm font-semibold text-success">Funded: mandate #{createdId.toString()}</h2>
           <p className="text-xs text-muted">
             Send the recipient this link so they can post proof of the work. When you are satisfied, release it from the same page.

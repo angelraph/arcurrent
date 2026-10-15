@@ -1,16 +1,11 @@
 import type { Metadata } from "next";
-import { IBM_Plex_Mono, Inter, Manrope } from "next/font/google";
+import { IBM_Plex_Mono, Inter } from "next/font/google";
 import "../globals.css";
 import { Providers } from "../providers";
 import { SiteFooter } from "../site-footer";
 
 const inter = Inter({
   variable: "--font-inter",
-  subsets: ["latin"],
-});
-
-const manrope = Manrope({
-  variable: "--font-manrope",
   subsets: ["latin"],
 });
 
@@ -33,7 +28,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${inter.variable} ${manrope.variable} ${plexMono.variable} h-full antialiased`}
+      className={`${inter.variable} ${plexMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
         <Providers>

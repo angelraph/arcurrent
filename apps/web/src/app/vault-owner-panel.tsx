@@ -44,9 +44,9 @@ function requireAddress(value: string, label: string): `0x${string}` {
 export function VaultOwnerPanel() {
   if (!VAULT_ADDRESS) return null;
   return (
-    <section className="flex flex-col gap-3 rounded-xl border border-border bg-surface p-5 shadow-sm">
+    <section className="card flex flex-col gap-3 p-6">
       <div className="flex flex-col gap-1">
-        <h2 className="label-mono">Vault owner controls</h2>
+        <h2 className="text-lg font-semibold tracking-[-0.01em]">Owner controls</h2>
         <p className="text-xs text-muted">
           Only the vault&apos;s owner can change the rules, fund it, or withdraw. Connect the owner wallet to
           use these; anyone else can look but not touch.

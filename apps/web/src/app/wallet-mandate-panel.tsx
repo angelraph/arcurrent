@@ -545,7 +545,7 @@ export function WalletMandatePanel({ initialMandateId }: { initialMandateId?: st
     initialMandateId && /^\d{1,15}$/.test(initialMandateId) ? BigInt(initialMandateId) : null
   );
   return (
-    <section className="flex flex-col gap-3 rounded-xl border-2 border-accent bg-surface p-5 shadow-sm">
+    <section className="card flex flex-col gap-3 border-l-[3px] border-l-accent p-6">
       <div className="flex flex-col gap-1">
         <h2 className="eyebrow">Use MandateEscrow yourself</h2>
         <p className="text-xs text-muted">
